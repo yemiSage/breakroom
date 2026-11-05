@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#b7b2fa">
+  <meta name="description" content="Breakroom is a live trivia game for your team. Host a room and play from any phone browser.">
+  <title>Breakroom — The office quiz</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a href="/" class="brand"><img src="/icon.svg" alt="" width="32" height="32"> Breakroom<span>.</span></a>
+      <span class="top-label">THE OFFICE QUIZ CLUB</span>
+      <a href="/join" class="join-link">Join a game <span aria-hidden="true">↗</span></a>
+    </header>
+    <main id="app" aria-label="Breakroom quiz">
+      <section class="landing">
+        <div class="hero-copy">
+          <h1>Clock out.<br><em>Quiz in.</em></h1>
+          <p class="lede">A live trivia break for the whole office. Pick a mode, send the invite, and see who takes the crown.</p>
+          <div class="host-setup">
+            <fieldset>
+              <legend>CHOOSE HOW TO PLAY</legend>
+              <div class="mode-picker">
+                <label class="mode"><input type="radio" name="mode" value="local" checked><span class="mode-copy"><strong>Local</strong><small>Same Wi-Fi</small></span></label>
+                <label class="mode"><input type="radio" name="mode" value="online"><span class="mode-copy"><strong>Online</strong><small>Play from anywhere</small></span></label>
+              </div>
+            </fieldset>
+            <form id="host-form">
+              <div id="host-access" hidden>
+                <label class="field-label">VENUE HOST KEY<input name="hostKey" type="password" autocomplete="off" maxlength="32" disabled></label>
+              </div>
+              <button type="submit" class="button primary" data-create disabled>Host a game <span aria-hidden="true">↗</span></button>
+            </form>
+            <div id="launch-help"></div>
+            <p class="notice" id="message" role="status"></p>
+          </div>
+        </div>
+        <figure class="hero-art" aria-hidden="true">
+          <img src="/hero.svg" alt="" width="600" height="500">
+        </figure>
+      </section>
+    </main>
+    <footer class="footer">
+      <span><b>01</b> · OPEN A ROOM</span><span><b>02</b> · SHARE THE LINK</span><span><b>03</b> · PLAY LIVE</span>
+    </footer>
+  </div>
+</body>
+</html>

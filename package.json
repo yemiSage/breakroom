@@ -1,0 +1,13 @@
+{
+  "name": "breakroom-quiz",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server/local.js",
+    "demo": "node server/local.js --demo",
+    "deploy": "npx --yes wrangler@4 deploy --config wrangler.jsonc",
+    "package:mac": "bash macos/package.sh"
+  }
+}

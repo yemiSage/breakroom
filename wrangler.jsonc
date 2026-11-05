@@ -1,0 +1,21 @@
+{
+  "name": "breakroom-quiz",
+  "account_id": "c5ec1d4fd84af46ded0a0d4fc4e33396",
+  "main": "server/worker.js",
+  "compatibility_date": "2026-11-04",
+  "workers_dev": true,
+  "preview_urls": false,
+  "ai": { "binding": "AI" },
+  "ratelimits": [{
+    "name": "AI_LIMITER",
+    "namespace_id": "1126202605",
+    "simple": { "limit": 12, "period": 60 }
+  }],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/host/*", "/join", "/join/*"]
+  },
+  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "QuizRoom" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["QuizRoom"] }]
+}
