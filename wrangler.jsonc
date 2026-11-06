@@ -3,6 +3,7 @@
   "account_id": "c5ec1d4fd84af46ded0a0d4fc4e33396",
   "main": "server/worker.js",
   "compatibility_date": "2026-11-04",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
   "ai": { "binding": "AI" },
@@ -14,8 +15,14 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/host/*", "/join", "/join/*"]
+    "run_worker_first": ["/api/*", "/host/*", "/join", "/join/*", "/sign-in", "/sign-in/"]
   },
-  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "QuizRoom" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["QuizRoom"] }]
+  "durable_objects": { "bindings": [
+    { "name": "ROOMS", "class_name": "QuizRoom" },
+    { "name": "ACCOUNTS", "class_name": "AccountStore" }
+  ] },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["QuizRoom"] },
+    { "tag": "v2-accounts", "new_sqlite_classes": ["AccountStore"] }
+  ]
 }

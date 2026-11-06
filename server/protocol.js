@@ -3,7 +3,7 @@ import { GameError, getQuestion, identify, join, move, reveal, snapshot } from '
 export const roomRoute = /^\/api\/rooms\/([A-HJ-NP-Z2-9]{8})\/(join|state|start|advance|answer|live)$/;
 export const resultRoute = /^\/api\/results\/([a-f0-9]{32})$/;
 export const imageRoute = /^\/api\/rooms\/([A-HJ-NP-Z2-9]{8})\/image\/([0-9]{1,2})$/;
-export const pageRoute = /^\/(?:host\/[A-HJ-NP-Z2-9]{8}|join(?:\/[A-HJ-NP-Z2-9]{8})?)\/?$/i;
+export const pageRoute = /^\/(?:sign-in|host\/[A-HJ-NP-Z2-9]{8}|join(?:\/[A-HJ-NP-Z2-9]{8})?)\/?$/i;
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const makeCode = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), byte => alphabet[byte & 31]).join('');
 export const makeToken = () => crypto.randomUUID().replaceAll('-', '');

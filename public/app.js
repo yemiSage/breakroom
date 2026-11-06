@@ -2,6 +2,7 @@ import { api, follow } from './live.js';
 import qrcode from './vendor/qrcode-generator.mjs';
 import { openQuizSetup } from './quiz-setup.js';
 import { answerLabels } from './answer-labels.js';
+import { renderSignIn } from './sign-in.js';
 
 const app = document.querySelector('#app');
 const codePattern = /^[A-HJ-NP-Z2-9]{8}$/;
@@ -23,6 +24,7 @@ const save = (key, value) => {
 const playerKey = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
 
 let config;
+let account;
 let session;
 let state;
 let connected = false;
@@ -150,6 +152,7 @@ function renderJoin(code, message = '') {
         '<button class="button primary">Find room <span aria-hidden="true">↗</span></button></form>') +
     '<p class="notice" id="message" role="status"></p>');
   say(message);
+  if (account && code) app.querySelector('[name=name]').value = account.name.slice(0, 24);
   if (!code) {
     app.querySelector('#code-form').addEventListener('submit', event => {
       event.preventDefault();
@@ -539,7 +542,11 @@ try {
   config = await api('/api/config');
   const [, route, rawCode] = location.pathname.split('/');
   const code = rawCode?.toUpperCase();
-  if (route === 'join') {
+  const accountLink = document.querySelector('[data-account]');
+  if (route === 'join') accountLink.href = '/sign-in?next=' + encodeURIComponent(location.pathname);
+  if (route === 'sign-in') {
+    renderSignIn(app, config);
+  } else if (route === 'join') {
     if (code && !codePattern.test(code)) renderJoin(null, 'Enter the code from your host.');
     else if (code && read('player:' + code)) openRoom(code, read('player:' + code), 'player');
     else renderJoin(code);
@@ -549,6 +556,17 @@ try {
     else renderMissing('Open the host screen in the same browser that created the game.');
   } else {
     renderLanding();
+  }
+  if (config.auth?.available) {
+    void api('/api/auth/get-session', { signal: AbortSignal.timeout(3500) }).then(result => {
+      account = result?.user;
+      if (!account) return;
+      accountLink.textContent = 'My account';
+      accountLink.title = 'Signed in as ' + account.email;
+      if (route === 'sign-in') renderSignIn(app, config, account);
+      const name = app.querySelector('#player-form [name=name]');
+      if (name && !name.value) name.value = account.name.slice(0, 24);
+    }).catch(() => {});
   }
 } catch (error) {
   renderMissing(error.message || 'Could not connect to the quiz server.');

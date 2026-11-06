@@ -12,6 +12,23 @@ Each question can label its answers with letters, shapes or emojis. In Game sett
 
 Use **Rephrase with AI** next to a question to rewrite its wording, then review it before opening the lobby. The host computer sends that question and its answer options to Cloudflare Workers AI. This feature needs internet access and allows up to twelve requests per minute from one IP address.
 
+## Optional account sign-in
+
+Open **Sign in** in the header to use an email code or Google. **Continue without signing in** returns to hosting or joining as a guest. Player invites open directly, and Local games support guest play during an internet outage. Local users can open account sign-in on the configured Online site.
+
+Online accounts use Better Auth with SQLite storage in the `AccountStore` Durable Object. Email codes expire after five minutes, allow five verification attempts, and are consumed after successful use. Sessions use an HttpOnly cookie, expire after seven days, and can be ended from **My account**. A signed-in player's name is filled into the join form and can be edited before joining.
+
+To activate the providers, configure these Worker secrets with `npx wrangler secret put NAME --config wrangler.jsonc`. Generate a random value of at least 32 characters for `BETTER_AUTH_SECRET`. Keep that value stable so existing sessions remain valid.
+
+- `BETTER_AUTH_SECRET` signs account cookies.
+- `BREVO_API_KEY` sends login codes through the Brevo transactional email API.
+- `BREVO_SENDER_EMAIL` is an email sender verified in the Brevo account.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` identify a Google OAuth web application.
+
+Register `https://breakroom-quiz.breakroom-quiz.workers.dev/api/auth/callback/google` as the Google application's authorized redirect URI. The Google project needs its own OAuth branding and audience configuration. The form enables each provider when its configuration is present. While a provider is pending, the page explains its availability and keeps guest access available.
+
+Run `npm ci` before deploying the Worker. Local hosting from source still uses the bundled browser assets and Node.js alone. Keep auth secrets in Cloudflare or an ignored `.dev.vars` file for a Wrangler preview.
+
 ## Try the browser prototype
 
 Run `npm run demo` and open [Breakroom on this computer](http://127.0.0.1:8080). Select **Local** and **Host a game**. Set your questions or choose **Use starter quiz** for three ready-made questions. Demo rounds last eight seconds. Open the invite in a second tab or on a phone on the same Wi-Fi, then advance after each reveal. Select **Show final results** to save the game and see its record.

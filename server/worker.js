@@ -2,14 +2,54 @@ import { DurableObject } from 'cloudflare:workers';
 import { createPayloadLimit, prepareDeck, recordPayloadLimit } from './deck.js';
 import { GameError, identify, newRoom, reveal, snapshot } from './game.js';
 import { paraphrase, readParaphrase } from './paraphrase.js';
+import { authAvailability } from './auth.js';
 import { actionToken, bearer, checkOrigin, errorResponse, handleAction, imageRoute, json, makeCode, makeToken,
   nextWake, pageRoute, questionImage, readInput, resultRoute, roomResponse, roomRoute, stateMessage } from './protocol.js';
+
+export { AccountStore } from './account-store.js';
+
+const authMethods = new Map([
+  ['/api/auth/get-session', 'GET'],
+  ['/api/auth/ok', 'GET'],
+  ['/api/auth/callback/google', 'GET'],
+  ['/api/auth/email-otp/send-verification-otp', 'POST'],
+  ['/api/auth/sign-in/email-otp', 'POST'],
+  ['/api/auth/sign-in/social', 'POST'],
+  ['/api/auth/sign-out', 'POST']
+]);
 
 export default {
   async fetch(request, env) {
     try {
       const url = new URL(request.url);
       const path = url.pathname;
+      if (path.startsWith('/api/auth/')) {
+        if (!authMethods.has(path)) throw new GameError(404, 'Unknown sign-in endpoint.');
+        if (request.method !== authMethods.get(path)) throw new GameError(405, 'Method not allowed.');
+        checkOrigin(request);
+        const available = authAvailability(env);
+        if (!available.available) {
+          if (path === '/api/auth/get-session') return json(null);
+          throw new GameError(503, 'Account sign-in is being set up. Please continue as a guest.');
+        }
+        if (path.includes('email-otp') && !available.email) {
+          throw new GameError(503, 'Email sign-in is being set up. Please continue as a guest.');
+        }
+        if ((path === '/api/auth/sign-in/social' || path === '/api/auth/callback/google') && !available.google) {
+          throw new GameError(503, 'Google sign-in is being set up. Please continue as a guest.');
+        }
+        if (request.method === 'POST') {
+          const input = await readInput(request, 4096);
+          if (path.endsWith('/send-verification-otp') && input.type !== 'sign-in') {
+            throw new GameError(400, 'Request a sign-in code to continue.');
+          }
+          if (path.endsWith('/social') && input.provider !== 'google') {
+            throw new GameError(400, 'Choose Google to continue.');
+          }
+          request = new Request(request, { body: JSON.stringify(input) });
+        }
+        return await env.ACCOUNTS.getByName('accounts').fetch(request);
+      }
       if (path === '/api/paraphrase') {
         if (request.method !== 'POST') throw new GameError(405, 'Method not allowed.');
         checkOrigin(request);
@@ -29,7 +69,7 @@ export default {
       }
       if (path === '/api/config' && request.method === 'GET') {
         return json({ mode: 'online', canHost: true, inviteOrigin: url.origin,
-          onlineOrigin: url.origin, localOrigin: 'http://127.0.0.1:8080', aiAvailable: Boolean(env.AI) });
+          onlineOrigin: url.origin, localOrigin: 'http://127.0.0.1:8080', aiAvailable: Boolean(env.AI), auth: authAvailability(env) });
       }
       if (path === '/api/rooms' && request.method === 'POST') {
         checkOrigin(request);

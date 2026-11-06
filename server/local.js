@@ -32,6 +32,7 @@ const files = new Map([
   ['/app.js', 'text/javascript; charset=utf-8'],
   ['/quiz-setup.js', 'text/javascript; charset=utf-8'],
   ['/answer-labels.js', 'text/javascript; charset=utf-8'],
+  ['/sign-in.js', 'text/javascript; charset=utf-8'],
   ['/live.js', 'text/javascript; charset=utf-8'],
   ['/vendor/qrcode-generator.mjs', 'text/javascript; charset=utf-8'],
   ['/hero.svg', 'image/svg+xml'],

@@ -12,7 +12,7 @@ export async function api(path, { token, data, signal } = {}) {
   const response = await fetch(path, { headers, signal: signal ?? AbortSignal.timeout(12_000), cache: 'no-store',
     ...(data !== undefined && { method: 'POST', body: JSON.stringify(data) }) });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(response.status, body.error || 'The quiz server is temporarily unavailable.');
+  if (!response.ok) throw new ApiError(response.status, body.message || body.error || 'The quiz server is temporarily unavailable.');
   return body;
 }
 
