@@ -193,6 +193,11 @@ button.answer:disabled { cursor: default; }
 .auth-greeting .tag { margin-bottom: 20px; }
 .auth-greeting > p { overflow-wrap: anywhere; }
 .auth-greeting .text-button { display: block; margin: 15px auto 0; }
+.privacy-link { margin: 16px 0 0; font-size: .78rem; line-height: 1.5; }
+.auth-content > .privacy-link { text-align: center; }
+.privacy-page h2 { margin-top: 28px; letter-spacing: -.03em; }
+.privacy-page p { line-height: 1.6; }
+.privacy-page a { overflow-wrap: anywhere; }
 @media (max-width: 810px) {
   .auth-page { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
   .auth-story, .auth-panel { padding: 30px 24px; }

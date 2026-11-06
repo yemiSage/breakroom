@@ -27,6 +27,8 @@ To activate the providers, configure these Worker secrets with `npx wrangler sec
 
 Register `https://breakroom-quiz.breakroom-quiz.workers.dev/api/auth/callback/google` as the Google application's authorized redirect URI. The Google project needs its own OAuth branding and audience configuration. The form enables each provider when its configuration is present. While a provider is pending, the page explains its availability and keeps guest access available.
 
+The public privacy notice is at `/privacy.html`, with links on the home and sign-in pages. Register that same URL in Google Auth Platform's Branding settings before publishing the app to its external audience.
+
 Run `npm ci` before deploying the Worker. Local hosting from source still uses the bundled browser assets and Node.js alone. Keep auth secrets in Cloudflare or an ignored `.dev.vars` file for a Wrangler preview.
 
 ## Try the browser prototype

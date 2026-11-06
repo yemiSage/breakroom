@@ -59,7 +59,8 @@ export function renderSignIn(app, config, user) {
   app.innerHTML = '<section class="auth-page" aria-labelledby="auth-title"><div class="auth-story">' +
     '<span class="tag">THE OFFICE QUIZ CLUB</span><h1>A little break.<br>A lot of<br><em>bragging rights.</em></h1>' +
     '<p>Your next office rivalry starts here.</p><img src="/hero.svg" width="600" height="500" alt="" class="auth-art" aria-hidden="true"></div>' +
-    '<div class="auth-panel"><div class="auth-content">' + content + '</div></div></section>';
+    '<div class="auth-panel"><div class="auth-content">' + content +
+    '<p class="privacy-link"><a href="/privacy.html">How Breakroom uses your information</a></p></div></div></section>';
   if (user) {
     app.querySelector('.auth-greeting h2').id = 'auth-title';
     app.querySelector('#account-sign-out').addEventListener('click', async event => {
