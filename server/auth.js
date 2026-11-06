@@ -76,7 +76,7 @@ export function createAuth(env, database, origin) {
                 'If you did not request this code, you can ignore this email.'
             }),
             signal: AbortSignal.timeout(8000),
-            redirect: 'error'
+            redirect: 'manual'
           });
           if (!response.ok) {
             const detail = await response.json().catch(() => ({}));
