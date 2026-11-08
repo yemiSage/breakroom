@@ -78,13 +78,13 @@ function renderLanding() {
     hostKey.disabled = !needsKey;
     hostKey.required = Boolean(needsKey);
     create.disabled = needsOnline || busy;
-    create.innerHTML = (needsLaptop ? 'Open Local on this laptop' : 'Host a game') + ' <span aria-hidden="true">↗</span>';
+    create.textContent = needsLaptop ? 'Open on host laptop' : 'Host a game';
     help.innerHTML = needsLaptop
-      ? 'Start the Breakroom app on the host laptop first, then open Local.'
+      ? 'Start Breakroom on the host laptop first.'
       : needsOnline
-        ? '<form id="online-form"><label class="field-label">DEPLOYED ONLINE URL<input name="origin" type="url" placeholder="https://your-worker.workers.dev" required></label><button class="button">Open Online <span aria-hidden="true">↗</span></button></form>'
+        ? '<form id="online-form"><label class="field-label">ONLINE ADDRESS<input name="origin" type="url" placeholder="https://your-worker.workers.dev" required></label><button class="button">Open Online</button></form>'
         : selected === 'local' && config.demo
-          ? '<strong>Quick demo.</strong> Three questions, eight seconds each. Join with a second tab or a phone on this Wi-Fi.'
+          ? '<strong>Demo:</strong> 3 questions, 8 seconds each.'
           : '';
     say('');
   }
@@ -100,7 +100,7 @@ function renderLanding() {
       save('online-origin', url.origin);
       location.href = url.origin + '/?mode=online';
     } catch {
-      say('Enter the HTTPS address of your Breakroom deployment.');
+      say('Enter an https:// address.');
     }
   });
   hostForm.addEventListener('submit', event => {
@@ -119,7 +119,7 @@ function renderLanding() {
       } catch {
         save('online-origin', null);
         showMode();
-        say('Enter a valid HTTPS address for your Breakroom deployment.');
+        say('Enter an https:// address.');
       }
       return;
     }
@@ -142,14 +142,15 @@ function renderLanding() {
 
 function renderJoin(code, message = '') {
   document.body.classList.add('player-view');
-  app.innerHTML = shell(tag('PLAYER ENTRY', 'green') + '<h1>Take a seat.</h1>' +
+  app.innerHTML = shell(
     (code
-      ? '<p>You’re joining room <strong>' + code + '</strong>. Pick a name for the scoreboard.</p>' +
-        '<form id="player-form"><label class="field-label">DISPLAY NAME<input name="name" autocomplete="nickname" maxlength="24" placeholder="e.g. Trivia Goblin" required></label>' +
-        '<button class="button primary">Join lobby <span aria-hidden="true">↗</span></button></form>'
-      : '<p>Enter the code from your host’s invite. For a Local game, open the invite on the host’s Wi-Fi.</p>' +
+      ? tag('ROOM ' + code, 'green') + '<h1>What’s your name?</h1>' +
+        '<form id="player-form"><label class="field-label">YOUR NAME<input name="name" autocomplete="nickname" maxlength="24" placeholder="Trivia Goblin" required></label>' +
+        '<button class="button primary">Join</button></form>'
+      : '<h1>Join a game</h1>' +
         '<form id="code-form"><label class="field-label">ROOM CODE<input name="code" autocomplete="off" autocapitalize="characters" maxlength="12" placeholder="ABCD2345" required></label>' +
-        '<button class="button primary">Find room <span aria-hidden="true">↗</span></button></form>') +
+        '<button class="button primary">Next</button></form>' +
+        '<p class="hint">Local game? Join the host’s Wi-Fi first.</p>') +
     '<p class="notice" id="message" role="status"></p>');
   say(message);
   if (account && code) app.querySelector('[name=name]').value = account.name.slice(0, 24);
@@ -212,32 +213,31 @@ function leaderboard(rows, final, start = 0) {
 
 function invite() {
   return '<p class="meta">ROOM CODE</p><p class="room-code">' + session.code + '</p>' +
-    '<p>' + (config.mode === 'online' ? 'Players can join from any internet connection.'
-      : config.lanAvailable ? 'Everyone joins on the same Wi-Fi or wired network.'
-      : 'This laptop has no LAN address. Connect it to the same network as your players.') + '</p>' +
+    (config.mode === 'online' ? '' : '<p class="hint">' + (config.lanAvailable ? 'Players must be on your Wi-Fi.'
+      : 'No network found. Connect this laptop to Wi-Fi.') + '</p>') +
     (state.phase === 'lobby' && inviteQr
       ? '<figure class="invite-qr">' + inviteQr + '<figcaption>Scan to join</figcaption></figure>'
       : '') +
     '<a class="invite" href="' + escape(inviteText) + '" target="_blank" rel="noopener noreferrer">' + escape(inviteText) + '</a>' +
-    button('Copy invite link', 'copy', { primary: true });
+    button('Copy link', 'copy', { primary: true });
 }
 
 function lobby(host) {
   if (host) {
     const roster = state.roster.length ? '<ul class="roster">' +
       state.roster.map(name => '<li>' + escape(name) + '</li>').join('') + '</ul>'
-      : '<p>Players will appear here when they join.</p>';
+      : '<p class="hint">No one yet.</p>';
     return {
-      main: '<h1>Lobby’s open.</h1><p>Share the invite. Start when your team is ready.</p>' +
-        '<h2>' + state.playerCount + ' / ' + state.capacity + ' players</h2>' + roster +
-        button('Start question <span aria-hidden="true">↗</span>', 'start',
+      main: '<h1>Waiting for players</h1>' +
+        '<h2>' + state.playerCount + ' / ' + state.capacity + ' joined</h2>' + roster +
+        button('Start game', 'start',
           { primary: true, disabled: !connected || busy || !state.playerCount }),
       side: invite()
     };
   }
   return {
-    main: '<h1>You’re in, ' + escape(state.you.name) + '.</h1><p>Hang tight. The host will start the first question.</p>' +
-      tag(state.playerCount + ' / ' + state.capacity + ' PLAYERS', 'green')
+    main: '<h1>You’re in, ' + escape(state.you.name) + '.</h1><p>The host will start soon.</p>' +
+      tag(state.playerCount + (state.playerCount === 1 ? ' PLAYER' : ' PLAYERS'), 'green')
   };
 }
 
@@ -260,7 +260,7 @@ function roundScreen(host) {
       (!connected || busy ? ' disabled' : '') + '>' + content + '</button>';
     return '<div class="' + css + '">' + content + '</div>';
   }).join('');
-  const meta = '<span class="meta">QUESTION ' + (round + 1) + ' / ' + state.questionCount + ' · ' +
+  const meta = '<span class="meta">' + (round + 1) + ' / ' + state.questionCount + ' · ' +
     escape(question.category.toUpperCase()) + '</span>';
   const timer = reveal ? '' : '<span class="timer" id="countdown" aria-label="Time remaining"></span>';
   let feedback = '';
@@ -268,28 +268,28 @@ function roundScreen(host) {
     const gotIt = multiple ? Array.isArray(selected) && selected.length === question.correct.length &&
       selected.every(choice => question.correct.includes(choice)) : selected === question.correct;
     const headline = host ? 'Answer revealed' : selected === null ? 'Time’s up' :
-      gotIt ? 'Correct! +100 points' : 'Answer revealed';
+      gotIt ? 'Correct! +100' : 'Not this time';
     feedback = '<div class="feedback" role="status"><p><strong>' + headline + '</strong></p>' +
       (question.fact ? '<p>' + escape(question.fact) + '</p>' : '') + '</div>';
   } else if (host) {
-    feedback = '<p><strong>' + state.answeredCount + ' / ' + state.playerCount + '</strong> answers locked in</p>';
+    feedback = '<p><strong>' + state.answeredCount + ' / ' + state.playerCount + '</strong> answered</p>';
   } else if (selected !== null) {
-    feedback = '<div class="feedback" role="status"><p><strong>Answer locked in.</strong> The reveal is up next.</p></div>';
+    feedback = '<div class="feedback" role="status"><p><strong>Locked in.</strong></p></div>';
   } else {
-    feedback = multiple ? button('Lock in answers', 'submit-multiple',
+    feedback = multiple ? button('Lock in', 'submit-multiple',
       { primary: true, disabled: !connected || busy || !selectedAnswers.size }) :
-      '<p id="answer-hint">Tap one answer to lock it in.</p>';
+      '<p id="answer-hint" class="hint">Tap an answer.</p>';
   }
   if (reveal && host) {
-    feedback += button(round + 1 === state.questionCount ? 'Show final results ↗' : 'Next question ↗', 'advance',
+    feedback += button(round + 1 === state.questionCount ? 'Show results' : 'Next question', 'advance',
       { primary: true, disabled: !connected || busy });
   } else if (reveal) {
-    feedback += '<p>Waiting for the host to continue.</p>';
+    feedback += '<p class="hint">Waiting for the host…</p>';
   }
   const side = host ? leaderboard(state.leaderboard, false) : '';
   const image = question.hasImage ? '<img class="question-image" src="' + session.path + '/image/' + round +
     '" alt="Image for this question">' : '';
-  const hint = awaiting && multiple ? '<p id="answer-hint">Select all that apply, then lock in your answers.</p>' : '';
+  const hint = awaiting && multiple ? '<p id="answer-hint" class="hint">Pick all that apply.</p>' : '';
   return {
     main: '<div class="question-head">' + meta + timer + '</div>' +
       (reveal ? '' : '<progress id="timebar" max="' + state.duration + '" aria-label="Time remaining"></progress>') +
@@ -310,9 +310,9 @@ function finale(host) {
   const finalists = rows.slice(0, 3);
   const step = currentFinaleStep();
   if (step < 0) {
-    return '<div class="finale-intro"><p class="meta">THE RESULTS ARE IN</p><h1>Who takes<br>the crown?</h1>' +
+    return '<div class="finale-intro"><h1>Who takes<br>the crown?</h1>' +
       '<span class="finale-countdown" role="timer" aria-label="Results in ' + (-step) + ' seconds">' + (-step) +
-      '</span><p>Get ready for your winners.</p></div>';
+      '</span></div>';
   }
   const complete = step > finalists.length;
   const places = [1, 0, 2].filter(index => index < finalists.length).map(index => {
@@ -328,33 +328,33 @@ function finale(host) {
   }).join('');
   const rest = complete && !host && rows.length > 3
     ? '<div class="finale-standings">' + leaderboard(rows, true, 3) + '</div>' : '';
-  return '<div class="finale"><p class="meta">BREAKROOM CHAMPIONS</p><h1>' +
+  return '<div class="finale"><h1>' +
     (step >= finalists.length ? 'Take a bow.' : 'The podium awaits.') + '</h1>' +
     '<div class="podium">' + places + '</div>' + rest +
-    (complete && !host ? '<p class="personal-score">Your score · <strong>' + state.you.score + ' points</strong></p>' : '') + '</div>';
+    (complete && !host ? '<p class="personal-score">You scored <strong>' + state.you.score + '</strong></p>' : '') + '</div>';
 }
 
 function finish(host) {
   const archive = state.archiveStatus && ({
-    saved: 'Saved on the local computer.',
-    pending: 'Saved locally. Waiting to upload.',
-    synced: 'Saved locally and uploaded.'
+    saved: 'Results saved.',
+    pending: 'Results saved. Uploading…',
+    synced: 'Results saved and uploaded.'
   })[state.archiveStatus];
   finaleStep = currentFinaleStep();
   return {
     main: '<div id="finale">' + finale(host) + '</div>' +
       (archive ? '<div class="feedback" role="status"><p>' + archive + '</p></div>' : '') +
       '<a class="button primary" href="' + (host ? '/?mode=' + state.mode : '/join') + '">' +
-      (host ? 'Host another game' : 'Join another game') + ' <span aria-hidden="true">↗</span></a>',
-    side: host ? leaderboard(state.leaderboard, true) + (archive ? button('Download game record', 'export') : '') : ''
+      (host ? 'New game' : 'Join another game') + '</a>',
+    side: host ? leaderboard(state.leaderboard, true) + (archive ? button('Download results', 'export') : '') : ''
   };
 }
 
 function renderRoom() {
   if (state) document.body.classList.toggle('game-started', state.phase !== 'lobby');
   if (!state) {
-    app.innerHTML = shell(tag(notice ? 'RECONNECTING' : 'CONNECTING', notice ? 'pink' : '') +
-      '<h1>Opening the room…</h1><p id="message" role="status"></p>');
+    app.innerHTML = shell((notice ? tag('RECONNECTING', 'pink') : '') +
+      '<h1>Connecting…</h1><p id="message" role="status"></p>');
     say(notice);
     return;
   }
@@ -363,9 +363,8 @@ function renderRoom() {
   const choice = focusAction && previous.dataset.choice;
   const host = session.role === 'host';
   const status = !connected && state.phase !== 'final' ? tag('RECONNECTING', 'pink') :
-    tag({ lobby: 'LOBBY OPEN', answering: 'LIVE ROUND', reveal: 'ANSWER REVEAL', final: 'GAME COMPLETE' }[state.phase], 'green');
-  const header = host ? '<div class="status-row" role="status">' + status +
-    tag('HOST · ' + state.mode.toUpperCase()) + tag(state.code) + '</div>' : '';
+    tag({ lobby: 'LOBBY', answering: 'LIVE', reveal: 'REVEAL', final: 'FINISHED' }[state.phase], 'green');
+  const header = host ? '<div class="status-row" role="status">' + status + '</div>' : '';
   const screen = state.phase === 'lobby' ? lobby(host) : state.phase === 'final' ? finish(host) : roundScreen(host);
   app.innerHTML = shell(header + screen.main + '<p class="notice" id="message" role="status"></p>', screen.side);
   say(notice);
@@ -390,7 +389,7 @@ function paintTimer() {
   document.querySelector('#timebar').value = remaining;
   if (!seconds) {
     const hint = document.querySelector('#answer-hint');
-    if (hint) hint.textContent = 'Time’s up. Waiting for the reveal.';
+    if (hint) hint.textContent = 'Time’s up.';
     for (const answer of app.querySelectorAll('button[data-action=answer], button[data-action=toggle], button[data-action=submit-multiple]')) {
       answer.disabled = true;
     }
@@ -432,7 +431,7 @@ function openRoom(code, token, role, initial) {
   void follow({ mode: config.mode, path, token, onState: apply, onConnection(value) {
     if (value === connected && (value || notice)) return;
     connected = value;
-    notice = value ? '' : 'Connection interrupted. We’ll resume this room when you’re back.';
+    notice = value ? '' : 'Connection lost. Reconnecting…';
     renderRoom();
   }, async onEnd(error) {
     if (role === 'host' && config.mode === 'local' && error.status === 404) {
@@ -454,8 +453,8 @@ function openRoom(code, token, role, initial) {
 }
 
 function renderMissing(message) {
-  app.innerHTML = shell(tag('ROOM ACCESS', 'pink') + '<h1>Can’t open this room.</h1><p>' +
-    escape(message) + '</p><a class="button primary" href="/">Back to Breakroom ↗</a>');
+  app.innerHTML = shell('<h1>Can’t open this room</h1><p>' +
+    escape(message) + '</p><a class="button primary" href="/">Back home</a>');
 }
 
 async function copyInvite() {
@@ -475,7 +474,7 @@ async function copyInvite() {
     }
     if (!copied) throw new Error();
   }
-  say('Invite copied.');
+  say('Link copied.');
 }
 
 app.addEventListener('click', async event => {
@@ -483,7 +482,7 @@ app.addEventListener('click', async event => {
   if (!target || !session) return;
   const action = target.dataset.action;
   if (action === 'copy') {
-    try { await copyInvite(); } catch { say('Select the invite address to copy it manually.'); }
+    try { await copyInvite(); } catch { say('Couldn’t copy. Select the link instead.'); }
     return;
   }
   if (action === 'leaderboard' && session.role === 'host') {
@@ -553,7 +552,7 @@ try {
   } else if (route === 'host' && codePattern.test(code || '')) {
     const token = read('host:' + code);
     if (token) openRoom(code, token, 'host');
-    else renderMissing('Open the host screen in the same browser that created the game.');
+    else renderMissing('Open it in the browser that created the game.');
   } else {
     renderLanding();
   }
@@ -561,7 +560,7 @@ try {
     void api('/api/auth/get-session', { signal: AbortSignal.timeout(3500) }).then(result => {
       account = result?.user;
       if (!account) return;
-      accountLink.textContent = 'My account';
+      accountLink.textContent = 'Account';
       accountLink.title = 'Signed in as ' + account.email;
       if (route === 'sign-in') renderSignIn(app, config, account);
       const name = app.querySelector('#player-form [name=name]');
