@@ -11,8 +11,8 @@ function questionFields(id) {
   return '<details class="setup-card" data-question open>' +
     '<summary class="setup-summary"><span data-question-label></span><span data-question-preview>Untitled question</span></summary>' +
     '<fieldset class="setup-content"><legend class="sr-only"></legend>' +
-    '<label class="field-label setup-prompt"><span>QUESTION</span><input name="prompt" maxlength="240" required></label>' +
-    '<button type="button" class="setup-ai" data-rephrase disabled>Rephrase with AI</button>' +
+    '<div class="setup-prompt-row"><label class="field-label setup-prompt"><span>QUESTION</span><input name="prompt" maxlength="240" required></label>' +
+    '<button type="button" class="setup-ai" data-rephrase disabled aria-label="Rephrase with AI" title="Rephrase with AI"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 20 11-11"/><path d="m13 7 4 4"/><path d="M18 2.5v3M16.5 4h3M20.5 9v2M19.5 10h2M9.5 3v2M8.5 4h2"/></svg></button></div>' +
     '<p class="setup-ai-status" role="status"></p>' +
     '<label class="field-label setup-image" hidden>IMAGE<input name="image" type="file" accept="image/jpeg,image/png,image/webp" disabled></label>' +
     answers +
@@ -160,7 +160,7 @@ export function openQuizSetup(app, createRoom, back, paraphraseQuestion) {
       const message = card.querySelector('.setup-ai-status');
       busy = true;
       action.disabled = true;
-      action.textContent = 'Rephrasing…';
+      action.setAttribute('aria-busy', 'true');
       message.textContent = '';
       try {
         const options = [...card.querySelectorAll('[name=answer]')].map(field => field.value.trim()).filter(Boolean);
@@ -177,7 +177,7 @@ export function openQuizSetup(app, createRoom, back, paraphraseQuestion) {
         message.textContent = error.message;
       } finally {
         busy = false;
-        action.textContent = 'Rephrase with AI';
+        action.removeAttribute('aria-busy');
         for (const question of cards.children) {
           question.querySelector('[data-rephrase]').disabled = !paraphraseQuestion || !question.querySelector('[name=prompt]').value.trim();
         }

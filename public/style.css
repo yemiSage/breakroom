@@ -215,6 +215,13 @@ button.answer:disabled { cursor: default; }
   .brand img { width: 26px; height: 26px; }
   .account-link { padding: 0 12px; }
   .join-link { padding: 0 14px; gap: 0; }
+  .account-link, .join-link { white-space: nowrap; }
+}
+@media (max-width: 380px) {
+  .brand { margin-left: 12px; font-size: 18px; }
+  .brand img { width: 24px; height: 24px; }
+  .account-link { padding: 0 10px; }
+  .join-link { padding: 0 11px; }
 }
 @media (min-width: 920px) and (max-height: 820px) {
   body { padding-block: 25px; }
@@ -248,9 +255,14 @@ button.answer:disabled { cursor: default; }
 .quiz-order legend { width: 100%; }
 .quiz-order label { display: flex; align-items: center; gap: 8px; line-height: 1.35; cursor: pointer; }
 .quiz-order input { width: 18px; height: 18px; margin: 0; accent-color: #5d46b3; }
-.setup-ai { margin-bottom: 12px; padding: 7px 10px; border: 1px solid var(--ink); border-radius: 5px; color: var(--ink); background: var(--paper); cursor: pointer; font-weight: 700; }
-.setup-ai:disabled { cursor: default; opacity: .5; }
-.setup-ai-status { margin: 8px 0 12px; font-size: .85rem; line-height: 1.4; }
+/* AI rephrase: a wand icon sitting at the right end of the QUESTION label row. */
+.setup-prompt-row { position: relative; }
+.setup-ai { position: absolute; top: -7px; right: 0; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid transparent; border-radius: 6px; color: #5d46b3; background: transparent; cursor: pointer; transition: background-color .16s, border-color .16s; }
+.setup-ai:hover:not(:disabled) { background: var(--lime); border-color: var(--ink); color: var(--ink); }
+.setup-ai:disabled { cursor: default; opacity: .4; }
+.setup-ai[aria-busy="true"] svg { animation: wand-wave .8s ease-in-out infinite alternate; }
+@keyframes wand-wave { from { transform: rotate(-12deg); } to { transform: rotate(12deg); } }
+.setup-ai-status { margin: -4px 0 12px; font-size: .85rem; line-height: 1.4; }
 .setup-ai-status:empty { display: none; }
 .setup-card .setup-prompt, .setup-card .setup-image { margin-bottom: 12px; }
 .setup-answer { grid-template-columns: minmax(0, 1fr) auto; }
