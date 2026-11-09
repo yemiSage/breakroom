@@ -136,6 +136,8 @@ button.answer { cursor: pointer; }
 button.answer:hover:not(:disabled) { background: #e0d7ff; }
 button.answer:disabled { cursor: default; }
 .answer .letter { font: 800 .9rem/1 var(--mono); padding: 8px; border: 1px solid var(--ink); border-radius: 4px; background: var(--paper); flex: none; }
+.answer .letter svg { display: block; }
+[data-answer-label] svg { vertical-align: middle; }
 .answer.correct, .answer.selected { background: var(--lime); }
 .answer.incorrect { background: var(--pink); }
 .feedback { background: #f0ecd9; border-left: 4px solid #6650ba; padding: 12px 14px; margin-bottom: 17px; }

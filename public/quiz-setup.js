@@ -1,4 +1,4 @@
-import { answerLabels } from './answer-labels.js';
+import { answerLabels, labelIcon } from './answer-labels.js';
 
 const questionLimit = 12;
 
@@ -23,7 +23,7 @@ function questionFields(id) {
     '<label class="field-label">CORRECT<span class="setup-select"><select name="selection"><option value="single">One</option>' +
     '<option value="multiple">Several</option></select></span></label>' +
     '<label class="field-label">LABELS<span class="setup-select"><select name="optionStyle"><option value="alphabet">A B C D</option>' +
-    '<option value="shapes">▲ ■ ● ★</option><option value="emojis">😀 🚀 🌈 🎉</option></select></span></label></div>' +
+    '<option value="shapes">Shapes</option><option value="emojis">😀 🚀 🌈 🎉</option></select></span></label></div>' +
     '<button type="button" class="setup-remove" data-remove>Remove question</button></fieldset></details>';
 }
 
@@ -136,7 +136,9 @@ export function openQuizSetup(app, createRoom, back, paraphraseQuestion) {
     } else if (field.name === 'optionStyle') {
       const labels = answerLabels[field.value];
       [...card.querySelectorAll('.setup-answer')].forEach((answer, index) => {
-        answer.querySelector('[data-answer-label]').textContent = 'ANSWER ' + labels[index].symbol;
+        answer.querySelector('[data-answer-label]').innerHTML = 'ANSWER ' +
+          (labels[index].path ? '<span class="sr-only">' + labels[index].name + '</span>' : '') +
+          labelIcon(labels[index]);
         answer.querySelector('[data-correct-label]').textContent = 'answer ' + labels[index].name;
       });
     } else if (field.name === 'selection') {

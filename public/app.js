@@ -1,7 +1,7 @@
 import { api, follow } from './live.js';
 import qrcode from './vendor/qrcode-generator.mjs';
 import { openQuizSetup } from './quiz-setup.js';
-import { answerLabels } from './answer-labels.js';
+import { answerLabels, labelIcon } from './answer-labels.js';
 import { renderSignIn } from './sign-in.js';
 
 const app = document.querySelector('#app');
@@ -289,7 +289,7 @@ function roundScreen(host) {
     const picked = Array.isArray(selected) ? selected.includes(i) : selected === i;
     const toggled = awaiting && multiple && selectedAnswers.has(i);
     const css = 'answer' + (correct ? ' correct' : picked && reveal ? ' incorrect' : picked || toggled ? ' selected' : '');
-    const content = '<span class="letter" role="img" aria-label="' + labels[i].name + '">' + labels[i].symbol + '</span><strong>' + escape(option) +
+    const content = '<span class="letter" role="img" aria-label="' + labels[i].name + '">' + labelIcon(labels[i]) + '</span><strong>' + escape(option) +
       (correct ? ' · Correct' : picked ? ' · Your answer' : '') + '</strong>';
     if (awaiting) return '<button class="' + css + '" data-action="' + (multiple ? 'toggle' : 'answer') +
       '" data-choice="' + i + '"' + (multiple ? ' aria-pressed="' + toggled + '"' : '') +
