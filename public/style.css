@@ -297,8 +297,8 @@ button.answer:disabled { cursor: default; }
 .setup-ai { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid transparent; border-radius: 6px; color: #5d46b3; background: transparent; cursor: pointer; transition: background-color .16s, border-color .16s; }
 .setup-ai:hover:not(:disabled) { background: var(--lime); border-color: var(--ink); color: var(--ink); }
 .setup-ai:disabled { cursor: default; opacity: .4; }
-.setup-ai[aria-busy="true"] svg { animation: wand-wave .8s ease-in-out infinite alternate; }
-@keyframes wand-wave { from { transform: rotate(-12deg); } to { transform: rotate(12deg); } }
+.setup-ai[aria-busy="true"] svg { animation: sparkle-sway .8s ease-in-out infinite alternate; }
+@keyframes sparkle-sway { from { transform: rotate(-12deg); } to { transform: rotate(12deg); } }
 .setup-ai-status { margin: -4px 0 12px; font-size: .85rem; line-height: 1.4; }
 .setup-ai-status:empty { display: none; }
 .setup-card .setup-prompt, .setup-card .setup-image { margin-bottom: 12px; }
@@ -306,6 +306,7 @@ button.answer:disabled { cursor: default; }
 .setup-correct { display: flex; align-items: center; gap: 5px; min-height: 40px; font-weight: 700; }
 .setup-correct input { width: 18px; height: 18px; accent-color: #5d46b3; }
 .setup-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 22px; }
+.setup-actions .primary { flex: 1 1 auto; }
 .setup-remove { border: 0; padding: 7px 0; background: transparent; text-decoration: underline; cursor: pointer; }
 .setup-remove:disabled { display: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -313,9 +314,9 @@ button.answer:disabled { cursor: default; }
 @media (max-width: 650px) {
   .quiz-setup { padding: 26px 16px 32px; }
   .setup-content { padding: 14px; }
-  .setup-actions .button { flex: 1 1 auto; }
 }
 @media (max-width: 420px) {
+  .setup-actions .primary { flex-basis: 100%; }
   .setup-types { grid-template-columns: minmax(0, 1fr); }
 }
 

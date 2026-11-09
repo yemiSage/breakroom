@@ -12,7 +12,7 @@ function questionFields(id) {
     '<summary class="setup-summary"><span data-question-label></span><span data-question-preview>Untitled question</span></summary>' +
     '<fieldset class="setup-content"><legend class="sr-only"></legend>' +
     '<div class="setup-prompt"><div class="setup-prompt-row"><label class="field-label" for="prompt-' + id + '">QUESTION</label>' +
-    '<button type="button" class="setup-ai" data-rephrase disabled aria-label="Rephrase with AI" title="Rephrase with AI"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 20 11-11"/><path d="m13 7 4 4"/><path d="M18 2.5v3M16.5 4h3M20.5 9v2M19.5 10h2M9.5 3v2M8.5 4h2"/></svg></button></div>' +
+    '<button type="button" class="setup-ai" data-rephrase disabled aria-label="Rephrase with AI" title="Rephrase with AI"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 8c.8 4.6 2.4 6.2 7 7-4.6.8-6.2 2.4-7 7-.8-4.6-2.4-6.2-7-7 4.6-.8 6.2-2.4 7-7Z"/><path fill="currentColor" stroke="none" d="M17.5 1c.6 3.6 1.9 4.9 5.5 5.5-3.6.6-4.9 1.9-5.5 5.5-.6-3.6-1.9-4.9-5.5-5.5 3.6-.6 4.9-1.9 5.5-5.5Z"/></svg></button></div>' +
     '<input id="prompt-' + id + '" name="prompt" maxlength="240" required></div>' +
     '<p class="setup-ai-status" role="status"></p>' +
     '<label class="field-label setup-image" hidden>IMAGE<input name="image" type="file" accept="image/jpeg,image/png,image/webp" disabled></label>' +
