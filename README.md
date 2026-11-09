@@ -51,7 +51,11 @@ npm start
 
 The network must allow devices to reach one another on TCP port 8080. Guest Wi-Fi can isolate devices. Set `BREAKROOM_LAN_HOST` to the intended address if the laptop has several network interfaces. The source server also accepts `PORT` if the default port is in use.
 
-Players can refresh or reconnect in the same browser. Keep that browser’s site data available. Active rooms live in memory until the server stops or the room expires after 24 hours. New players can join until the first round starts.
+Use Local HTTP on a network you trust. To encrypt Local traffic, set `BREAKROOM_TLS_CERT` and `BREAKROOM_TLS_KEY` to a PEM certificate chain and its private key before starting the server. The certificate must be trusted by the host and player devices and cover `127.0.0.1` and the LAN address or hostname used in the invite. HTTPS invites and the QR code use the same Wi-Fi or hotspot connection. Online mode provides HTTPS on the deployed site.
+
+Players can refresh or reconnect in the same browser. Keep that browser’s site data available. Active rooms live in memory until the server stops or the room expires after 24 hours. New players can join until the first round starts. The Local host cookie can reopen saved results for up to 30 days.
+
+Hosts can pause and resume joins or remove players while the lobby is open. If several Online players share one public IP, they may need to join in batches. Each player or host can connect from up to two tabs in the same browser session.
 
 ## Host from another computer at the venue
 
@@ -76,7 +80,7 @@ npm run deploy
 
 The deploy script runs `npx --yes wrangler@4 deploy --config wrangler.jsonc`. Wrangler prints the public HTTPS URL. Open it, select **Online**, and create a room. To switch to Online from the Local launcher, enter the deployed URL in the setup screen or set `BREAKROOM_ONLINE_URL` before starting the server from source.
 
-Each Online room has one SQLite-backed Durable Object, a server alarm for the deadline, and hibernatable WebSockets for live updates. Local uses HTTP streaming with the same game rules and browser screens. Host credentials stay in the creating browser. Player invites contain only the room code.
+Each Online room has one SQLite-backed Durable Object, a server alarm for the deadline, and hibernatable WebSockets for live updates. Local uses streaming with the same game rules and browser screens. Room credentials live in room-scoped HttpOnly cookies. Player invites contain only the room code. Online creation and room requests are throttled per Cloudflare location. A shared budget allows up to 1,000 Online room creations per UTC day across locations.
 
 Cloudflare’s Free plan lists 100,000 Durable Object requests and 13,000 GB-seconds of duration per day. SQLite storage includes 5 million row reads and 100,000 row writes per day and 5 GB of account storage. These are account quotas. The 100-player room cap is a design target with real-world capacity unverified. [Cloudflare Durable Objects pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/)
 

@@ -31,7 +31,7 @@ export function completedGame(room, now) {
     code: room.code,
     completedAt: new Date(now).toISOString(),
     questions: (room.deck ?? questions).slice(0, questionCount),
-    players: room.players.map(({ name, score, answers }) => ({
+    players: room.players.filter(player => !player.removed).map(({ name, score, answers }) => ({
       name, score, answers: Array.from({ length: questionCount }, (_, round) => answers[round] ?? null)
     }))
   };
@@ -40,7 +40,7 @@ export function completedGame(room, now) {
 export function identify(room, token) {
   if (!token) throw new GameError(401, 'This browser does not have access to that session.');
   if (token === room.host) return { role: 'host' };
-  const index = room.players.findIndex(player => player.token === token);
+  const index = room.players.findIndex(player => !player.removed && player.token === token);
   if (index < 0) throw new GameError(401, 'This browser does not have access to that session.');
   return { role: 'player', index };
 }
@@ -56,17 +56,22 @@ export function reveal(room, now) {
   return true;
 }
 
-export function join(room, name, token) {
+export function join(room, name, token, attempt) {
   if (room.phase !== 'lobby') throw new GameError(409, 'This game has already started.');
-  if (room.players.length >= capacity) throw new GameError(409, 'This room is full.');
+  if (room.locked) throw new GameError(423, 'The host has paused new joins. Try again when they reopen the lobby.');
+  const available = room.players.findIndex(player => player.removed);
+  if (available < 0 && room.players.length >= capacity) throw new GameError(409, 'This room is full.');
   const clean = typeof name === 'string' ? name.trim().replace(/\s+/gu, ' ') : '';
   if (!clean || clean.length > 24 || /[\p{Cc}\p{Cf}]/u.test(clean)) {
     throw new GameError(400, 'Enter a display name between 1 and 24 characters.');
   }
-  room.players.push({ name: clean, token, score: 0, answers: {} });
+  const index = available < 0 ? room.players.length : available;
+  room.players[index] = { id: crypto.randomUUID(), name: clean, token, attempt, score: 0, answers: {} };
   room.revision++;
-  return { role: 'player', index: room.players.length - 1 };
+  return { role: 'player', index };
 }
+
+const playerId = (player, index) => player.id ?? String(index);
 
 export function move(room, member, action, input, now) {
   const questionCount = room.questionCount ?? questions.length;
@@ -93,9 +98,23 @@ export function move(room, member, action, input, now) {
     answers[round] = answer;
   } else {
     if (member.role !== 'host') throw new GameError(403, 'Only the host can move the game forward.');
+    if (action === 'lock' || action === 'remove') {
+      if (room.phase !== 'lobby') throw new GameError(409, 'The game has already started.');
+      if (action === 'lock') {
+        if (typeof input.locked !== 'boolean') throw new GameError(400, 'Choose whether to pause joins.');
+        if (Boolean(room.locked) === input.locked) return false;
+        room.locked = input.locked;
+      } else {
+        const player = room.players.find((entry, index) => playerId(entry, index) === input.playerId);
+        if (!player || player.removed) return false;
+        player.removed = true;
+      }
+      room.revision++;
+      return true;
+    }
     if (action === 'start') {
       if (room.phase !== 'lobby') return false;
-      if (!room.players.length) throw new GameError(409, 'Wait for at least one player to join.');
+      if (!room.players.some(player => !player.removed)) throw new GameError(409, 'Wait for at least one player to join.');
     } else if (action === 'advance') {
       if (!Number.isInteger(input.round) || input.round < 0) throw new GameError(400, 'A question number is required.');
       if (input.round < room.round || room.phase === 'final') return false;
@@ -120,12 +139,17 @@ export function move(room, member, action, input, now) {
 }
 
 export function snapshot(room, member, now) {
+  const active = room.players.filter(player => !player.removed);
   const view = { code: room.code, mode: room.mode, phase: room.phase, revision: room.revision,
-    playerCount: room.players.length, capacity, round: room.round, questionCount: room.questionCount ?? questions.length,
+    playerCount: active.length, capacity, round: room.round, questionCount: room.questionCount ?? questions.length,
     deadline: room.deadline, duration: room.duration ?? duration, serverTime: now };
   const host = member.role === 'host';
   if (host && room.archiveStatus) view.archiveStatus = room.archiveStatus;
-  if (host && room.phase === 'lobby') view.roster = room.players.map(player => player.name);
+  if (host && room.phase === 'lobby') {
+    view.roster = active.map(player => player.name);
+    view.rosterIds = room.players.flatMap((player, index) => player.removed ? [] : [playerId(player, index)]);
+    view.locked = Boolean(room.locked);
+  }
   if (host && room.phase === 'answering') {
     view.answeredCount = room.players.filter(player => player.answers[room.round] !== undefined).length;
   }
@@ -140,7 +164,7 @@ export function snapshot(room, member, now) {
     if (room.phase === 'reveal') Object.assign(view.question, { correct, fact });
   }
   if ((host && room.phase !== 'lobby') || room.phase === 'final') {
-    view.leaderboard = room.players.map(({ name, score }, index) => ({ name, score, index }))
+    view.leaderboard = room.players.flatMap(({ name, score, removed }, index) => removed ? [] : [{ name, score, index }])
       .sort((a, b) => b.score - a.score)
       .map(({ name, score, index }) => ({ name, score, you: index === member.index }));
     if (!host) view.leaderboard = view.leaderboard.slice(0, Math.max(3, view.leaderboard.length - 5));

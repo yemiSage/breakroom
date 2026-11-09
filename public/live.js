@@ -5,9 +5,10 @@ export class ApiError extends Error {
   }
 }
 
-export async function api(path, { token, data, signal } = {}) {
+export async function api(path, { token, role, data, signal } = {}) {
   const headers = {};
   if (token) headers.Authorization = 'Bearer ' + token;
+  if (role) headers['X-Breakroom-Role'] = role;
   if (data !== undefined) headers['Content-Type'] = 'application/json';
   const response = await fetch(path, { headers, signal: signal ?? AbortSignal.timeout(12_000), cache: 'no-store',
     ...(data !== undefined && { method: 'POST', body: JSON.stringify(data) }) });
@@ -16,8 +17,8 @@ export async function api(path, { token, data, signal } = {}) {
   return body;
 }
 
-async function stream(path, token, receive, signal) {
-  const response = await fetch(path + '/live', { signal, headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' });
+async function stream(path, role, receive, signal) {
+  const response = await fetch(path + '/live', { signal, headers: { 'X-Breakroom-Role': role }, cache: 'no-store' });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new ApiError(response.status, body.error || 'Could not connect to the room.');
@@ -38,12 +39,13 @@ async function stream(path, token, receive, signal) {
   }
 }
 
-async function socket(path, token, receive, signal) {
-  await api(path + '/state', { token, signal });
+async function socket(path, role, receive, signal) {
+  await api(path + '/state', { role, signal });
   const url = new URL(path + '/live', location.href);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  url.searchParams.set('role', role);
   return new Promise(resolve => {
-    const connection = new WebSocket(url, ['breakroom', token]);
+    const connection = new WebSocket(url, 'breakroom');
     const close = () => connection.close();
     signal.addEventListener('abort', close, { once: true });
     if (signal.aborted) close();
@@ -59,7 +61,7 @@ async function socket(path, token, receive, signal) {
   });
 }
 
-export async function follow({ mode, path, token, onState, onConnection, onEnd }) {
+export async function follow({ mode, path, role, onState, onConnection, onEnd }) {
   const connect = mode === 'online' ? socket : stream;
   let delay = 600;
   for (;;) {
@@ -71,7 +73,7 @@ export async function follow({ mode, path, token, onState, onConnection, onEnd }
     };
     refreshWatchdog();
     try {
-      await connect(path, token, message => {
+      await connect(path, role, message => {
         refreshWatchdog();
         if (message.type !== 'state') return;
         delay = 600;

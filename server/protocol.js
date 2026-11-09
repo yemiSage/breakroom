@@ -1,6 +1,7 @@
 import { GameError, getQuestion, identify, join, move, reveal, snapshot } from './game.js';
+import { requestedRole, roomCookie, roomSession, tokenPattern } from './room-security.js';
 
-export const roomRoute = /^\/api\/rooms\/([A-HJ-NP-Z2-9]{8})\/(join|state|start|advance|answer|live)$/;
+export const roomRoute = /^\/api\/rooms\/([A-HJ-NP-Z2-9]{8})\/(join|state|start|advance|answer|live|lock|remove)$/;
 export const resultRoute = /^\/api\/results\/([a-f0-9]{32})$/;
 export const imageRoute = /^\/api\/rooms\/([A-HJ-NP-Z2-9]{8})\/image\/([0-9]{1,2})$/;
 export const pageRoute = /^\/(?:sign-in|host\/[A-HJ-NP-Z2-9]{8}|join(?:\/[A-HJ-NP-Z2-9]{8})?)\/?$/i;
@@ -15,9 +16,11 @@ export const errorResponse = error => {
   return json({ error: 'Something went wrong on the quiz server.' }, 500);
 };
 
-export function checkOrigin(request) {
+export function checkOrigin(request, required = false) {
   const origin = request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) throw new GameError(403, 'Open the quiz directly to continue.');
+  if ((required || origin) && origin !== new URL(request.url).origin) {
+    throw new GameError(403, 'Open the quiz directly to continue.');
+  }
 }
 
 export async function readInput(request, limit = 2048) {
@@ -55,29 +58,36 @@ export function activeRoom(room, now) {
   return room;
 }
 
-export function questionImage(room, round) {
+export function questionImage(room, round, token) {
   const active = activeRoom(room, Date.now());
+  identify(active, token);
   const image = round <= active.round && getQuestion(active, round)?.image;
   if (!image) throw new GameError(404, 'Question image not found.');
   return new Response(Uint8Array.from(atob(image), char => char.charCodeAt(0)), {
-    headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' }
+    headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, no-store',
+      'Cross-Origin-Resource-Policy': 'same-origin', 'X-Content-Type-Options': 'nosniff' }
   });
 }
 
 // Create a candidate state first so a failed write can never affect an active room.
-export function handleAction(room, action, input, token, now) {
+export function handleAction(room, action, input, token, now, admit = () => {}) {
   const { deck, ...roomState } = activeRoom(room, now);
   const next = structuredClone(roomState);
   if (deck) next.deck = deck;
   let member;
   let changed = false;
   if (action === 'join') {
-    const index = next.players.findIndex(player => player.token === token);
+    const attempt = input.attempt;
+    if (attempt !== undefined && (typeof attempt !== 'string' || !tokenPattern.test(attempt))) {
+      throw new GameError(400, 'Invalid join attempt.');
+    }
+    const index = next.players.findIndex(player => player.token === token || (attempt && player.attempt === attempt));
     if (index >= 0) {
+      if (next.players[index].removed) throw new GameError(403, 'The host removed this player.');
       member = { role: 'player', index };
     } else {
-      if (token === next.host) throw new GameError(403, 'Use a separate player session to join.');
-      member = join(next, input.name, token);
+      admit();
+      member = join(next, input.name, makeToken(), attempt);
       changed = true;
     }
   } else {
@@ -92,18 +102,26 @@ export function handleAction(room, action, input, token, now) {
     error = problem;
   }
   const audience = revealed || (changed && action !== 'answer') ? 'all' : changed ? 'host' : null;
-  return { next, audience, error, state: snapshot(next, member, now) };
+  return { next, audience, error, state: snapshot(next, member, now),
+    playerToken: action === 'join' ? next.players[member.index].token : undefined };
 }
 
-export function roomResponse(result, action, token) {
+export function roomResponse(result, action, request, code) {
   if (result.error) return errorResponse(result.error);
-  return json(action === 'join' ? { token, state: result.state } : { state: result.state }, action === 'join' ? 201 : 200);
+  if (action === 'join') {
+    return roomSession(json({ state: result.state }, 201), request, code, 'player', result.playerToken);
+  }
+  const response = json({ state: result.state });
+  const legacy = action === 'state' && bearer(request);
+  if (!legacy || roomCookie(request, code)) return response;
+  const role = legacy === result.next.host ? 'host' : 'player';
+  return roomSession(response, request, code, role, legacy, role === 'host' && result.next.mode === 'local' ? 2_592_000 : undefined);
 }
 
-export function actionToken(request, action) {
-  const token = bearer(request);
-  if (action === 'join' && !token) throw new GameError(400, 'A player session key is required.');
-  return token;
+export function actionToken(request, code, action) {
+  const cookie = roomCookie(request, code, action === 'join' ? 'player' : requestedRole(request));
+  if (cookie && request.method !== 'GET') checkOrigin(request, true);
+  return cookie ?? (action === 'state' ? bearer(request) : undefined);
 }
 
 export const nextWake = room => room.phase === 'answering'

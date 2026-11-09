@@ -3,10 +3,20 @@ import { createPayloadLimit, prepareDeck, recordPayloadLimit } from './deck.js';
 import { GameError, identify, newRoom, reveal, snapshot } from './game.js';
 import { paraphrase, readParaphrase } from './paraphrase.js';
 import { authAvailability } from './auth.js';
+import { connectionsPerMember, joinLimiter, roomCookie, roomSession } from './room-security.js';
 import { actionToken, bearer, checkOrigin, errorResponse, handleAction, imageRoute, json, makeCode, makeToken,
   nextWake, pageRoute, questionImage, readInput, resultRoute, roomResponse, roomRoute, stateMessage } from './protocol.js';
 
 export { AccountStore } from './account-store.js';
+
+const requestSource = request => request.headers.get('CF-Connecting-IP') || 'local-preview';
+const day = 86_400_000;
+const dailyRoomBudget = 1000;
+
+async function limit(binding, key, message) {
+  if (!binding) throw new GameError(503, 'Online room protection is unavailable.');
+  if (!(await binding.limit({ key })).success) throw new GameError(429, message);
+}
 
 const authMethods = new Map([
   ['/api/auth/get-session', 'GET'],
@@ -73,9 +83,16 @@ export default {
       }
       if (path === '/api/rooms' && request.method === 'POST') {
         checkOrigin(request);
+        const message = 'Too many rooms are being opened. Try again in a minute.';
+        await limit(env.ROOM_CREATE_LIMITER, requestSource(request), message);
+        await limit(env.ROOM_CREATE_BUDGET, 'all', message);
         const input = await readInput(request, createPayloadLimit);
         if (input.mode !== 'online') throw new GameError(400, 'Choose Online on this server.');
         const deck = prepareDeck(input.questions, input);
+        const budget = await env.ROOMS.getByName('online-room-budget').fetch(new Request(
+          url.origin + '/internal/room-budget', { method: 'POST' }
+        ));
+        if (!budget.ok) return budget;
         const body = JSON.stringify({ deck });
         for (let i = 0; i < 3; i++) {
           const code = makeCode();
@@ -89,6 +106,7 @@ export default {
       const route = path.match(roomRoute) || path.match(imageRoute);
       if (route) {
         checkOrigin(request);
+        await limit(env.ROOM_TRAFFIC_LIMITER, requestSource(request), 'Too many room requests. Try again shortly.');
         return await env.ROOMS.getByName(route[1]).fetch(request);
       }
       if (path.startsWith('/api/')) throw new GameError(404, 'Unknown quiz endpoint.');
@@ -105,6 +123,7 @@ export default {
 export class QuizRoom extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
+    this.admit = joinLimiter();
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
   }
 
@@ -123,7 +142,13 @@ export class QuizRoom extends DurableObject {
   publish(room, audience) {
     for (const ws of this.ctx.getWebSockets(audience === 'host' ? 'host' : undefined)) {
       try {
-        ws.send(stateMessage(room, ws.deserializeAttachment()));
+        const member = ws.deserializeAttachment();
+        const player = member.role === 'player' && room.players[member.index];
+        if (member.role === 'player' && (!player || player.removed || player.id !== member.playerId)) {
+          ws.close(4003, 'Removed from room');
+          continue;
+        }
+        ws.send(stateMessage(room, member));
       } catch {
         ws.close(1011, 'Reconnect to resume');
       }
@@ -133,6 +158,18 @@ export class QuizRoom extends DurableObject {
   async fetch(request) {
     try {
       const path = new URL(request.url).pathname;
+      if (path === '/internal/room-budget' && request.method === 'POST') {
+        const allowed = await this.ctx.storage.transaction(async txn => {
+          const today = Math.floor(Date.now() / day);
+          const budget = await txn.get('creation-budget');
+          const count = budget?.today === today ? budget.count : 0;
+          if (count >= dailyRoomBudget) return false;
+          await txn.put('creation-budget', { today, count: count + 1 });
+          return true;
+        });
+        return allowed ? new Response(null, { status: 204 }) :
+          json({ error: 'Online hosting reached its daily room limit. Try again after midnight UTC.' }, 429);
+      }
       const result = path.match(resultRoute);
       if (result) {
         if (request.method === 'GET') {
@@ -159,35 +196,42 @@ export class QuizRoom extends DurableObject {
           const token = makeToken();
           const room = newRoom(create[1], 'online', token, Date.now(), { deck });
           await this.save(room);
-          return json({ token, state: snapshot(room, { role: 'host' }, Date.now()) }, 201);
+          const response = json({ state: snapshot(room, { role: 'host' }, Date.now()) }, 201);
+          return roomSession(response, request, room.code, 'host', token);
         });
       }
       const image = path.match(imageRoute);
       if (image && request.method === 'GET') {
-        return questionImage(await this.ctx.storage.get('room'), Number(image[2]));
+        return questionImage(await this.ctx.storage.get('room'), Number(image[2]), roomCookie(request, image[1]));
       }
       const route = path.match(roomRoute);
       if (!route) throw new GameError(404, 'Unknown room action.');
-      const action = route[2];
+      const [, code, action] = route;
       const get = action === 'state' || action === 'live';
       if (request.method !== (get ? 'GET' : 'POST')) throw new GameError(405, 'Method not allowed.');
       const input = get ? {} : await readInput(request);
-      const token = action === 'live' ? request.headers.get('Sec-WebSocket-Protocol')
-        ?.match(/^breakroom,\s*([a-f0-9]{32})$/)?.[1] : actionToken(request, action);
+      if (action === 'live') checkOrigin(request, true);
+      const token = actionToken(request, code, action);
 
       return await this.ctx.blockConcurrencyWhile(async () => {
         try {
           const room = await this.ctx.storage.get('room');
-          const result = handleAction(room, action === 'live' ? 'state' : action, input, token, Date.now());
+          const result = handleAction(room, action === 'live' ? 'state' : action, input, token, Date.now(),
+            () => this.admit(requestSource(request)));
           if (result.audience) {
             await this.save(result.next, nextWake(room));
             this.publish(result.next, result.audience);
           }
-          if (action !== 'live') return roomResponse(result, action, token);
+          if (action !== 'live') return roomResponse(result, action, request, code);
 
           if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') throw new GameError(426, 'WebSocket upgrade required.');
-          if (this.ctx.getWebSockets().length >= 240) throw new GameError(503, 'Too many connections in this room.');
           const member = identify(result.next, token);
+          if (member.role === 'player') member.playerId = result.next.players[member.index].id;
+          const connections = this.ctx.getWebSockets(member.role).filter(ws => {
+            const attached = ws.deserializeAttachment();
+            return ws.readyState === 1 && attached?.index === member.index && attached?.playerId === member.playerId;
+          });
+          if (connections.length >= connectionsPerMember) throw new GameError(429, 'Too many connections for this player.');
           const { 0: client, 1: socket } = new WebSocketPair();
           this.ctx.acceptWebSocket(socket, [member.role]);
           socket.serializeAttachment(member);

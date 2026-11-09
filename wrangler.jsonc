@@ -11,6 +11,18 @@
     "name": "AI_LIMITER",
     "namespace_id": "1126202605",
     "simple": { "limit": 12, "period": 60 }
+  }, {
+    "name": "ROOM_CREATE_LIMITER",
+    "namespace_id": "1126202606",
+    "simple": { "limit": 6, "period": 60 }
+  }, {
+    "name": "ROOM_CREATE_BUDGET",
+    "namespace_id": "1126202607",
+    "simple": { "limit": 60, "period": 60 }
+  }, {
+    "name": "ROOM_TRAFFIC_LIMITER",
+    "namespace_id": "1126202608",
+    "simple": { "limit": 900, "period": 60 }
   }],
   "assets": {
     "directory": "./public",

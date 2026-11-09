@@ -6,6 +6,7 @@ import { renderSignIn } from './sign-in.js';
 
 const app = document.querySelector('#app');
 const codePattern = /^[A-HJ-NP-Z2-9]{8}$/;
+const legacyTokenPattern = /^[a-f0-9]{32}$/;
 const escape = value => String(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[char]));
@@ -31,7 +32,8 @@ function savedRooms(role) {
       const key = localStorage.key(index);
       if (!key?.startsWith(prefix)) continue;
       const code = key.slice(prefix.length);
-      if (codePattern.test(code) && /^[a-f0-9]{32}$/.test(localStorage.getItem(key))) codes.push(code);
+      const value = localStorage.getItem(key);
+      if (codePattern.test(code) && (value === '1' || legacyTokenPattern.test(value))) codes.push(code);
     }
   } catch {
     return '';
@@ -157,10 +159,10 @@ function renderLanding() {
     }
     openQuizSetup(app, async (questions, settings) => {
       const data = { mode, hostKey: key, questions, ...settings };
-      const { token, state: initial } = await api('/api/rooms', { data });
-      save('host:' + initial.code, token);
+      const { state: initial } = await api('/api/rooms', { data });
+      save('host:' + initial.code, '1');
       history.pushState({}, '', '/host/' + initial.code);
-      openRoom(initial.code, token, 'host', initial);
+      void openRoom(initial.code, 'host', initial);
     }, () => {
       draft = app.firstElementChild;
       app.replaceChildren(landing);
@@ -204,17 +206,17 @@ function renderJoin(code, message = '') {
     const form = event.target;
     const name = new FormData(form).get('name');
     const submit = form.querySelector('button');
-    joinAttempt ||= read('attempt:' + code) || playerKey();
-    save('attempt:' + code, joinAttempt);
+    joinAttempt ||= playerKey();
+    save('attempt:' + code, null);
     busy = true;
     submit.disabled = true;
     say('');
     try {
-      const { token, state: initial } = await api('/api/rooms/' + code + '/join', { token: joinAttempt, data: { name } });
-      save('player:' + code, token);
-      save('attempt:' + code, null);
+      const { state: initial } = await api('/api/rooms/' + code + '/join', { data: { name, attempt: joinAttempt } });
+      save('player:' + code, '1');
+      joinAttempt = undefined;
       busy = false;
-      openRoom(code, token, 'player', initial);
+      void openRoom(code, 'player', initial);
     } catch (error) {
       if (error.status === 404 || error.status === 409) renderMissing(error.message, 'player');
       else say(error.message);
@@ -251,6 +253,8 @@ function invite() {
   return '<p class="meta">ROOM CODE</p><p class="room-code">' + session.code + '</p>' +
     (config.mode === 'online' ? '' : '<p class="hint">' + (config.lanAvailable ? 'Players must be on your Wi-Fi.'
       : 'No network found. Connect this laptop to Wi-Fi.') + '</p>') +
+    (config.mode === 'local' && !config.inviteOrigin.startsWith('https:')
+      ? '<p class="hint">Use a trusted network for Local games.</p>' : '') +
     (state.phase === 'lobby' && inviteQr
       ? '<figure class="invite-qr">' + inviteQr + '<figcaption>Scan to join</figcaption></figure>'
       : '') +
@@ -260,14 +264,19 @@ function invite() {
 
 function lobby(host) {
   if (host) {
+    const disabled = !connected || busy;
     const roster = state.roster.length ? '<ul class="roster">' +
-      state.roster.map(name => '<li>' + escape(name) + '</li>').join('') + '</ul>'
+      state.roster.map((name, index) => '<li>' + escape(name) +
+        '<button type="button" class="roster-remove" data-action="remove" data-player="' +
+        escape(state.rosterIds[index]) + '" aria-label="Remove ' + escape(name) + '"' +
+        (disabled ? ' disabled' : '') + '>Remove</button></li>').join('') + '</ul>'
       : '<p class="hint">No one yet.</p>';
     return {
       main: '<h1>Waiting for players</h1>' +
         '<h2>' + state.playerCount + ' / ' + state.capacity + ' joined</h2>' + roster +
-        button('Start game', 'start',
-          { primary: true, disabled: !connected || busy || !state.playerCount }),
+        '<div class="lobby-actions">' + button('Start game', 'start',
+          { primary: true, disabled: disabled || !state.playerCount }) +
+        button(state.locked ? 'Resume joins' : 'Pause joins', 'lock', { disabled }) + '</div>',
       side: invite()
     };
   }
@@ -323,8 +332,7 @@ function roundScreen(host) {
     feedback += '<p class="hint">Waiting for the host…</p>';
   }
   const side = host ? leaderboard(state.leaderboard, false) : '';
-  const image = question.hasImage ? '<img class="question-image" src="' + session.path + '/image/' + round +
-    '" alt="Image for this question">' : '';
+  const image = question.hasImage ? '<img class="question-image" alt="Image for this question">' : '';
   const hint = awaiting && multiple ? '<p id="answer-hint" class="hint">Pick all that apply.</p>' : '';
   return {
     main: '<div class="question-head">' + meta + timer + '</div>' +
@@ -397,17 +405,30 @@ function renderRoom() {
   const previous = document.activeElement;
   const focusAction = app.contains(previous) && previous.dataset.action;
   const choice = focusAction && previous.dataset.choice;
+  const player = focusAction && previous.dataset.player;
   const host = session.role === 'host';
   const status = tag({ lobby: 'LOBBY', answering: 'LIVE', reveal: 'REVEAL', final: 'FINISHED' }[state.phase], 'green');
   const header = host ? '<div class="status-row">' + status + '</div>' : '';
   const reconnecting = !connected && state.phase !== 'final';
   const screen = state.phase === 'lobby' ? lobby(host) : state.phase === 'final' ? finish(host) : roundScreen(host);
   const message = '<p class="notice" id="message" role="status"></p>';
-  app.innerHTML = shell(header + (reconnecting ? message : '') + screen.main + (reconnecting ? '' : message), screen.side);
+  const previousImage = app.querySelector('.question-image');
+  app.innerHTML = shell(header + (reconnecting ? message : '') + screen.main + (reconnecting ? '' : message),
+    screen.side);
+  const image = app.querySelector('.question-image');
+  if (image) {
+    const src = session.path + '/image/' + state.round + '?role=' + session.role;
+    if (previousImage?.getAttribute('src') === src) image.replaceWith(previousImage);
+    else image.src = src;
+  }
   say(notice);
   paintTimer();
-  if (focusAction) app.querySelector('[data-action="' + focusAction + '"]' +
-    (choice === undefined ? '' : '[data-choice="' + choice + '"]'))?.focus({ preventScroll: true });
+  if (focusAction) {
+    const target = app.querySelector('[data-action="' + focusAction + '"]' +
+      (choice === undefined ? '' : '[data-choice="' + choice + '"]') +
+      (player === undefined ? '' : '[data-player="' + CSS.escape(player) + '"]'));
+    (target ?? (player && app.querySelector('[data-action="lock"]')))?.focus({ preventScroll: true });
+  }
 }
 
 function paintTimer() {
@@ -446,10 +467,12 @@ function apply(next) {
   if (redraw) renderRoom();
 }
 
-function openRoom(code, token, role, initial) {
+async function openRoom(code, role, initial) {
   document.body.classList.toggle('player-view', role === 'player');
   const path = '/api/rooms/' + code;
-  session = { code, token, role, path };
+  session = { code, role, path };
+  const saved = read(role + ':' + code);
+  const legacy = legacyTokenPattern.test(saved ?? '') ? saved : undefined;
   showHostLeaderboard = read('host-leaderboard:' + code) !== 'hidden';
   state = undefined;
   selectedAnswers.clear();
@@ -463,17 +486,11 @@ function openRoom(code, token, role, initial) {
   } else {
     inviteQr = '';
   }
-  if (initial) apply(initial);
-  else renderRoom();
-  void follow({ mode: config.mode, path, token, onState: apply, onConnection(value) {
-    if (value === connected && (value || notice)) return;
-    connected = value;
-    notice = value ? '' : 'Connection lost. Reconnecting…';
-    renderRoom();
-  }, async onEnd(error) {
+  async function endRoom(error) {
     if (role === 'host' && config.mode === 'local' && error.status === 404) {
       try {
-        const { record, archiveStatus } = await api(path + '/results', { token });
+        const { record, archiveStatus } = await api(path + '/results', { role, token: legacy });
+        save('host:' + code, '1');
         state = { code, mode: 'local', phase: 'final', archiveStatus,
           leaderboard: record.players.slice().sort((a, b) => b.score - a.score) };
         notice = '';
@@ -483,10 +500,28 @@ function openRoom(code, token, role, initial) {
         if (archiveError.status !== 404) return renderMissing(archiveError.message, role, true);
       }
     }
+    if (error.status !== 401 && error.status !== 404) return renderMissing(error.message, role, true);
     save(role + ':' + code, null);
     if (role === 'player' && error.status === 401) return renderJoin(code, error.message);
     renderMissing(error.message, role);
-  } });
+  }
+  if (!initial) {
+    renderRoom();
+    try {
+      ({ state: initial } = await api(path + '/state', { role, token: legacy }));
+    } catch (error) {
+      return endRoom(error);
+    }
+  }
+  save(role + ':' + code, '1');
+  connected = true;
+  apply(initial);
+  void follow({ mode: config.mode, path, role, onState: apply, onConnection(value) {
+    if (value === connected && (value || notice)) return;
+    connected = value;
+    notice = value ? '' : 'Connection lost. Reconnecting…';
+    renderRoom();
+  }, onEnd: endRoom });
 }
 
 function renderMissing(message, role, retry = false) {
@@ -537,7 +572,7 @@ app.addEventListener('click', async event => {
   }
   if (action === 'export') {
     try {
-      const { record } = await api(session.path + '/results', { token: session.token });
+      const { record } = await api(session.path + '/results', { role: session.role });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' }));
       link.download = 'breakroom-' + session.code + '.json';
@@ -561,12 +596,14 @@ app.addEventListener('click', async event => {
   target.disabled = true;
   const answering = action === 'answer' || action === 'submit-multiple';
   const data = { round: state.round };
+  if (action === 'lock') data.locked = !state.locked;
+  if (action === 'remove') data.playerId = target.dataset.player;
   if (answering) {
     data.choice = action === 'answer' ? Number(target.dataset.choice) : [...selectedAnswers];
     for (const answer of app.querySelectorAll('button[data-action=answer], button[data-action=toggle]')) answer.disabled = true;
   }
   try {
-    const result = await api(session.path + '/' + (answering ? 'answer' : action), { token: session.token, data });
+    const result = await api(session.path + '/' + (answering ? 'answer' : action), { role: session.role, data });
     apply(result.state);
   } catch (error) {
     notice = error.message || 'Could not reach the server. Try again.';
@@ -589,11 +626,10 @@ try {
     renderSignIn(app, config);
   } else if (route === 'join') {
     if (code && !codePattern.test(code)) renderJoin(null, 'Enter the code from your host.');
-    else if (code && read('player:' + code)) openRoom(code, read('player:' + code), 'player');
+    else if (code && read('player:' + code)) void openRoom(code, 'player');
     else renderJoin(code);
   } else if (route === 'host') {
-    const token = codePattern.test(code || '') && read('host:' + code);
-    if (token) openRoom(code, token, 'host');
+    if (codePattern.test(code || '')) void openRoom(code, 'host');
     else renderMissing('Open it in the browser that created the game.');
   } else {
     renderLanding();

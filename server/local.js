@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { createServer as createSecureServer } from 'node:https';
 import { timingSafeEqual } from 'node:crypto';
 import { networkInterfaces } from 'node:os';
 import { readFileSync } from 'node:fs';
@@ -7,18 +8,26 @@ import { GameError, newRoom, reveal, snapshot } from './game.js';
 import { openArchive } from './archive.js';
 import { createPayloadLimit, prepareDeck } from './deck.js';
 import { readParaphrase } from './paraphrase.js';
+import { connectionsPerMember, joinLimiter, rateWindow, roomCookie, roomSession } from './room-security.js';
 import { actionToken, bearer, checkOrigin, errorResponse, handleAction, json, makeCode, makeToken,
   imageRoute, nextWake, pageRoute, questionImage, readInput, roomResponse, roomRoute, stateMessage } from './protocol.js';
 
 const port = Number(process.env.PORT || 8080);
 const onlineOrigin = process.env.BREAKROOM_ONLINE_URL || '';
 const hostKey = process.env.BREAKROOM_HOST_KEY;
+const certFile = process.env.BREAKROOM_TLS_CERT;
+const keyFile = process.env.BREAKROOM_TLS_KEY;
+if (Boolean(certFile) !== Boolean(keyFile)) throw new Error('Set both BREAKROOM_TLS_CERT and BREAKROOM_TLS_KEY for Local HTTPS.');
+const scheme = certFile ? 'https' : 'http';
+const portSuffix = port === (certFile ? 443 : 80) ? '' : ':' + port;
+const hostOrigin = scheme + '://127.0.0.1' + portSuffix;
 const demo = process.argv.includes('--demo') || process.env.BREAKROOM_DEMO === '1';
 if (hostKey && !/^[a-f0-9]{32}$/.test(hostKey)) {
   throw new Error('BREAKROOM_HOST_KEY must be a 32-character lowercase hex key.');
 }
 const roomLimit = 50;
 const rooms = new Map();
+const allowCreate = rateWindow(10, 60_000);
 const archive = openArchive(code => {
   const entry = rooms.get(code);
   if (!entry) return;
@@ -59,6 +68,11 @@ function requireHost(isHostLaptop, input) {
 
 function publish(entry, audience) {
   for (const [res, member] of entry.streams) {
+    if (member.role === 'player' && entry.room.players[member.index]?.removed) {
+      entry.streams.delete(res);
+      res.end();
+      continue;
+    }
     if (audience === 'host' && member.role !== 'host') continue;
     if (!res.write(stateMessage(entry.room, member) + '\n')) res.destroy();
   }
@@ -83,7 +97,7 @@ async function respond(res, response) {
   res.end(Buffer.from(await response.arrayBuffer()));
 }
 
-const server = createServer(async (req, res) => {
+async function handleRequest(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -91,19 +105,19 @@ const server = createServer(async (req, res) => {
     const host = req.headers.host;
     const interfaces = addresses();
     const allowedHosts = new Set(['localhost', '127.0.0.1', ...interfaces, process.env.BREAKROOM_LAN_HOST].filter(Boolean)
-      .map(value => port === 80 ? value : value + ':' + port));
+      .map(value => value + portSuffix));
     if (!allowedHosts.has(host)) throw new GameError(403, 'Use the address shown by the Breakroom server.');
-    const origin = 'http://' + host;
+    const origin = scheme + '://' + host;
     const url = new URL(req.url, origin);
     if (url.origin !== origin) throw new GameError(403, 'Open the quiz directly to continue.');
     const { pathname } = url;
     const isHostLaptop = req.socket.remoteAddress === '127.0.0.1';
     const lanHost = process.env.BREAKROOM_LAN_HOST || (interfaces.includes(url.hostname) ? url.hostname : interfaces[0]);
-    const inviteOrigin = lanHost ? 'http://' + lanHost + ':' + port : 'http://127.0.0.1:' + port;
+    const inviteOrigin = lanHost ? scheme + '://' + lanHost + portSuffix : hostOrigin;
 
     if (req.method === 'GET' && pathname === '/api/config') {
       return await respond(res, json({ mode: 'local', inviteOrigin, lanAvailable: Boolean(lanHost),
-        localOrigin: 'http://127.0.0.1:' + port, onlineOrigin, canHost: isHostLaptop || Boolean(hostKey),
+        localOrigin: hostOrigin, onlineOrigin, canHost: isHostLaptop || Boolean(hostKey),
         needsHostKey: !isHostLaptop && Boolean(hostKey), demo, aiAvailable: Boolean(onlineOrigin) }));
     }
     if (req.method === 'POST' && pathname === '/api/paraphrase') {
@@ -134,6 +148,7 @@ const server = createServer(async (req, res) => {
       checkOrigin(request);
       const input = await readInput(request, createPayloadLimit);
       requireHost(isHostLaptop, input);
+      if (!allowCreate(req.socket.remoteAddress)) throw new GameError(429, 'Too many rooms. Try again in a minute.');
       if (input.mode !== 'local') throw new GameError(400, 'Choose Local on this server.');
       const deck = prepareDeck(input.questions, input, demo ? 3 : undefined);
       if (rooms.size >= roomLimit) throw new GameError(503, 'This server has too many active rooms.');
@@ -143,24 +158,30 @@ const server = createServer(async (req, res) => {
       const room = newRoom(code, 'local', token, Date.now(), {
         deck, ...(demo && { questionCount: 3, duration: 8000 })
       });
-      const entry = { room, streams: new Map(), timer: null };
+      const entry = { room, streams: new Map(), admit: joinLimiter(), timer: null };
       rooms.set(code, entry);
       schedule(entry);
-      return await respond(res, json({ token, state: snapshot(room, { role: 'host' }, Date.now()) }, 201));
+      const response = json({ state: snapshot(room, { role: 'host' }, Date.now()) }, 201);
+      return await respond(res, roomSession(response, request, code, 'host', token, 2_592_000));
     }
 
     const image = pathname.match(imageRoute);
     if (image && req.method === 'GET') {
-      return await respond(res, questionImage(rooms.get(image[1])?.room, Number(image[2])));
+      const request = new Request(url, { headers: req.headers });
+      checkOrigin(request);
+      return await respond(res, questionImage(rooms.get(image[1])?.room, Number(image[2]), roomCookie(request, image[1])));
     }
 
     const archiveRoute = pathname.match(/^\/api\/rooms\/([A-HJ-NP-Z2-9]{8})\/results$/);
     if (archiveRoute && req.method === 'GET') {
       const request = new Request(url, { headers: req.headers });
       checkOrigin(request);
-      const saved = archive.get(archiveRoute[1], bearer(request));
+      const code = archiveRoute[1];
+      const cookie = roomCookie(request, code, 'host');
+      const token = cookie ?? bearer(request);
+      const saved = archive.get(code, token);
       if (!saved) throw new GameError(404, 'No saved results are available for this browser.');
-      return await respond(res, json(saved));
+      return await respond(res, cookie ? json(saved) : roomSession(json(saved), request, code, 'host', token, 2_592_000));
     }
 
     const route = pathname.match(roomRoute);
@@ -171,10 +192,11 @@ const server = createServer(async (req, res) => {
       const request = new Request(url, { method: req.method, headers: req.headers,
         ...(!get && { body: Readable.toWeb(req), duplex: 'half' }) });
       checkOrigin(request);
-      const token = actionToken(request, action);
+      const token = actionToken(request, code, action);
       const input = get ? {} : await readInput(request);
       const entry = rooms.get(code);
-      const result = handleAction(entry?.room, action === 'live' ? 'state' : action, input, token, Date.now());
+      const result = handleAction(entry?.room, action === 'live' ? 'state' : action, input, token, Date.now(),
+        () => entry.admit(req.socket.remoteAddress));
       if (result.audience) {
         const previousWake = nextWake(entry.room);
         if (result.next.phase === 'final' && entry.room.phase !== 'final') {
@@ -185,11 +207,12 @@ const server = createServer(async (req, res) => {
         if (nextWake(entry.room) !== previousWake) schedule(entry);
         publish(entry, result.audience);
       }
-      if (action !== 'live') return await respond(res, roomResponse(result, action, token));
+      if (action !== 'live') return await respond(res, roomResponse(result, action, request, code));
 
-      if (entry.streams.size >= 240) throw new GameError(503, 'Too many connections in this room.');
       const member = token === entry.room.host ? { role: 'host' } :
         { role: 'player', index: entry.room.players.findIndex(player => player.token === token) };
+      const connections = [...entry.streams.values()].filter(stream => stream.role === member.role && stream.index === member.index);
+      if (connections.length >= connectionsPerMember) throw new GameError(429, 'Too many connections for this player.');
       res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store',
         'X-Accel-Buffering': 'no' });
       entry.streams.set(res, member);
@@ -213,7 +236,11 @@ const server = createServer(async (req, res) => {
     if (!res.headersSent && !res.destroyed) await respond(res, errorResponse(error));
     else res.destroy();
   }
-});
+}
+
+const server = certFile
+  ? createSecureServer({ cert: readFileSync(certFile), key: readFileSync(keyFile) }, handleRequest)
+  : createServer(handleRequest);
 
 setInterval(() => {
   for (const entry of rooms.values()) {
@@ -224,6 +251,6 @@ setInterval(() => {
 }, 12_000).unref();
 
 server.listen(port, '0.0.0.0', () => {
-  console.log('BREAKROOM_READY http://127.0.0.1:' + port);
-  for (const host of addresses()) console.log('LAN http://' + host + ':' + port);
+  console.log('BREAKROOM_READY ' + hostOrigin);
+  for (const host of addresses()) console.log('LAN ' + scheme + '://' + host + portSuffix);
 });
