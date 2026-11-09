@@ -201,6 +201,7 @@ button.answer:disabled { cursor: default; }
 .auth-greeting .text-button { display: block; margin: 15px auto 0; }
 .legal-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 16px; margin-top: 12px; font-size: .875rem; }
 .legal-links a { display: inline-flex; align-items: center; min-height: 28px; text-underline-offset: 3px; }
+.host-legal-links { flex-direction: column; align-items: center; }
 .legal-page { max-width: 790px; }
 .legal-page h2 { margin: 28px 0 8px; letter-spacing: -.03em; }
 .legal-page p, .legal-page li { line-height: 1.6; }

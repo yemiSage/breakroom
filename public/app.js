@@ -91,7 +91,7 @@ function renderLanding() {
   const hostKey = hostForm.elements.hostKey;
   let draft;
   let key;
-  app.querySelector('.legal-links').insertAdjacentHTML('afterend', savedRooms('host'));
+  app.querySelector('#message').insertAdjacentHTML('afterend', savedRooms('host'));
 
   function showMode() {
     const selected = modes.find(option => option.checked).value;
