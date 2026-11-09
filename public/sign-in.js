@@ -59,7 +59,8 @@ export function renderSignIn(app, config, user) {
     '<h1>A little break.<br>A lot of<br><em>bragging rights.</em></h1>' +
     '<img src="/hero.svg" width="600" height="500" alt="" class="auth-art" aria-hidden="true"></div>' +
     '<div class="auth-panel"><div class="auth-content">' + content +
-    '<p class="privacy-link"><a href="/privacy.html">Privacy</a></p></div></div></section>';
+    '<nav class="legal-links" aria-label="Legal"><a href="/privacy.html">Privacy</a>' +
+    '<a href="/terms.html">Terms of Use</a></nav></div></div></section>';
   if (user) {
     app.querySelector('.auth-greeting h2').id = 'auth-title';
     app.querySelector('#account-sign-out').addEventListener('click', async event => {

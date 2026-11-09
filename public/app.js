@@ -91,7 +91,7 @@ function renderLanding() {
   const hostKey = hostForm.elements.hostKey;
   let draft;
   let key;
-  hostForm.insertAdjacentHTML('afterend', savedRooms('host'));
+  app.querySelector('.legal-links').insertAdjacentHTML('afterend', savedRooms('host'));
 
   function showMode() {
     const selected = modes.find(option => option.checked).value;
@@ -184,7 +184,9 @@ function renderJoin(code, message = '') {
         '<button class="button primary">Next</button></form>' +
         '<p class="hint">Local game? Join the host’s Wi-Fi first.</p>') +
     '<p class="notice" id="message" role="status"></p>' +
-    (code ? '<a class="room-back" href="/join">Change room code</a>' : savedRooms('player')));
+    (code ? '<a class="room-back" href="/join">Change room code</a>' : savedRooms('player')) +
+    '<nav class="legal-links" aria-label="Legal"><a href="/privacy.html">Privacy</a>' +
+    '<a href="/terms.html">Terms of Use</a></nav>');
   say(message);
   if (account?.name && code) app.querySelector('[name=name]').value = account.name.slice(0, 24);
   if (!code) {

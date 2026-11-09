@@ -29,6 +29,7 @@ const archive = openArchive(code => {
 const files = new Map([
   ['/index.html', 'text/html; charset=utf-8'],
   ['/privacy.html', 'text/html; charset=utf-8'],
+  ['/terms.html', 'text/html; charset=utf-8'],
   ['/style.css', 'text/css; charset=utf-8'],
   ['/app.js', 'text/javascript; charset=utf-8'],
   ['/quiz-setup.js', 'text/javascript; charset=utf-8'],
