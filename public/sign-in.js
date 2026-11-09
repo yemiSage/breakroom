@@ -160,7 +160,8 @@ export function renderSignIn(app, config, user) {
     message.textContent = '';
     try {
       const result = await api('/api/auth/sign-in/social', {
-        data: { provider: 'google', callbackURL: next, errorCallbackURL: '/sign-in?error=google' }
+        data: { provider: 'google', callbackURL: next,
+          errorCallbackURL: '/sign-in?error=google&next=' + encodeURIComponent(next) }
       });
       const url = new URL(result.url);
       if (url.protocol !== 'https:' || url.hostname !== 'accounts.google.com') throw new Error('Couldn’t open Google. Try again.');

@@ -56,6 +56,11 @@ legend { padding: 0; margin-bottom: 9px; }
 .button span { font-size: 20px; }
 .notice { color: #753153; font-size: .9rem; line-height: 1.45; margin: 13px 0 0; overflow-wrap: anywhere; }
 .notice:empty, #launch-help:empty { display: none; }
+.room-back { display: inline-block; margin-top: 16px; font-size: .9rem; font-weight: 700; }
+.saved-rooms { margin-top: 18px; text-align: left; border: var(--line); border-radius: 8px; }
+.saved-rooms summary { padding: 11px 12px; cursor: pointer; font-weight: 800; }
+.saved-rooms ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0 12px 12px; list-style: none; }
+.saved-rooms .button { font-family: var(--mono); }
 .hint { color: #554d6d; font-size: .9rem; line-height: 1.45; }
 form + .hint { margin-top: 14px; }
 #launch-help { margin-top: 12px; font-size: .9rem; line-height: 1.45; }
@@ -79,6 +84,7 @@ figcaption { display: flex; justify-content: space-between; gap: 10px; }
 .game h2 { font-size: clamp(1.25rem, 2.25vw, 1.8rem); letter-spacing: -.04em; margin-bottom: 10px; }
 .game p { line-height: 1.45; }
 .status-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 21px; }
+.game-main > .notice:not(:last-child) { margin: 0 0 14px; }
 .tag { display: inline-flex; align-items: center; gap: 7px; padding: 5px 8px; border: 1px solid var(--ink); border-radius: 4px; background: #e9e3ff; }
 .tag.green { background: var(--lime); }
 .tag.pink { background: var(--pink); }

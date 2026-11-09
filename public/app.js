@@ -23,6 +23,27 @@ const save = (key, value) => {
 };
 const playerKey = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
 
+function savedRooms(role) {
+  const prefix = 'breakroom:' + role + ':';
+  const codes = [];
+  try {
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index);
+      if (!key?.startsWith(prefix)) continue;
+      const code = key.slice(prefix.length);
+      if (codePattern.test(code) && /^[a-f0-9]{32}$/.test(localStorage.getItem(key))) codes.push(code);
+    }
+  } catch {
+    return '';
+  }
+  if (!codes.length) return '';
+  const title = role === 'host' ? 'Your hosted rooms' : 'Your joined rooms';
+  const route = role === 'host' ? '/host/' : '/join/';
+  return '<details class="saved-rooms"><summary>' + title + '</summary><ul>' +
+    codes.sort().map(code => '<li><a class="button" href="' + route + code +
+      '" aria-label="Open room ' + code + '">' + code + '</a></li>').join('') + '</ul></details>';
+}
+
 let config;
 let account;
 let session;
@@ -68,6 +89,9 @@ function renderLanding() {
   const help = app.querySelector('#launch-help');
   const hostAccess = app.querySelector('#host-access');
   const hostKey = hostForm.elements.hostKey;
+  let draft;
+  let key;
+  hostForm.insertAdjacentHTML('afterend', savedRooms('host'));
 
   function showMode() {
     const selected = modes.find(option => option.checked).value;
@@ -78,7 +102,8 @@ function renderLanding() {
     hostKey.disabled = !needsKey;
     hostKey.required = Boolean(needsKey);
     create.disabled = needsOnline || busy;
-    create.textContent = needsLaptop ? 'Open on host laptop' : 'Host a game';
+    create.textContent = needsLaptop ? 'Open on host laptop' :
+      draft && selected === config.mode ? 'Continue setup' : 'Host a game';
     help.innerHTML = needsLaptop
       ? 'Start Breakroom on the host laptop first.'
       : needsOnline
@@ -124,7 +149,12 @@ function renderLanding() {
       return;
     }
     const landing = app.firstElementChild;
-    const key = hostKey.disabled ? undefined : hostKey.value.trim();
+    key = hostKey.disabled ? undefined : hostKey.value.trim();
+    if (draft) {
+      app.replaceChildren(draft);
+      (draft.querySelector('details[open] [name=prompt]') ?? draft.querySelector('summary')).focus();
+      return;
+    }
     openQuizSetup(app, async (questions, settings) => {
       const data = { mode, hostKey: key, questions, ...settings };
       const { token, state: initial } = await api('/api/rooms', { data });
@@ -132,7 +162,9 @@ function renderLanding() {
       history.pushState({}, '', '/host/' + initial.code);
       openRoom(initial.code, token, 'host', initial);
     }, () => {
+      draft = app.firstElementChild;
       app.replaceChildren(landing);
+      showMode();
       create.focus();
     }, config.aiAvailable ? async input => api('/api/paraphrase', {
       data: { ...input, hostKey: key }, signal: AbortSignal.timeout(30000)
@@ -151,9 +183,10 @@ function renderJoin(code, message = '') {
         '<form id="code-form"><label class="field-label">ROOM CODE<input name="code" autocomplete="off" autocapitalize="characters" maxlength="12" placeholder="ABCD2345" required></label>' +
         '<button class="button primary">Next</button></form>' +
         '<p class="hint">Local game? Join the host’s Wi-Fi first.</p>') +
-    '<p class="notice" id="message" role="status"></p>');
+    '<p class="notice" id="message" role="status"></p>' +
+    (code ? '<a class="room-back" href="/join">Change room code</a>' : savedRooms('player')));
   say(message);
-  if (account && code) app.querySelector('[name=name]').value = account.name.slice(0, 24);
+  if (account?.name && code) app.querySelector('[name=name]').value = account.name.slice(0, 24);
   if (!code) {
     app.querySelector('#code-form').addEventListener('submit', event => {
       event.preventDefault();
@@ -181,7 +214,8 @@ function renderJoin(code, message = '') {
       busy = false;
       openRoom(code, token, 'player', initial);
     } catch (error) {
-      say(error.message);
+      if (error.status === 404 || error.status === 409) renderMissing(error.message, 'player');
+      else say(error.message);
     } finally {
       busy = false;
       submit.disabled = false;
@@ -353,8 +387,8 @@ function finish(host) {
 function renderRoom() {
   if (state) document.body.classList.toggle('game-started', state.phase !== 'lobby');
   if (!state) {
-    app.innerHTML = shell((notice ? tag('RECONNECTING', 'pink') : '') +
-      '<h1>Connecting…</h1><p id="message" role="status"></p>');
+    app.innerHTML = shell('<h1>' + (notice ? 'Reconnecting…' : 'Connecting…') +
+      '</h1><p class="notice" id="message" role="status"></p>');
     say(notice);
     return;
   }
@@ -362,11 +396,12 @@ function renderRoom() {
   const focusAction = app.contains(previous) && previous.dataset.action;
   const choice = focusAction && previous.dataset.choice;
   const host = session.role === 'host';
-  const status = !connected && state.phase !== 'final' ? tag('RECONNECTING', 'pink') :
-    tag({ lobby: 'LOBBY', answering: 'LIVE', reveal: 'REVEAL', final: 'FINISHED' }[state.phase], 'green');
-  const header = host ? '<div class="status-row" role="status">' + status + '</div>' : '';
+  const status = tag({ lobby: 'LOBBY', answering: 'LIVE', reveal: 'REVEAL', final: 'FINISHED' }[state.phase], 'green');
+  const header = host ? '<div class="status-row">' + status + '</div>' : '';
+  const reconnecting = !connected && state.phase !== 'final';
   const screen = state.phase === 'lobby' ? lobby(host) : state.phase === 'final' ? finish(host) : roundScreen(host);
-  app.innerHTML = shell(header + screen.main + '<p class="notice" id="message" role="status"></p>', screen.side);
+  const message = '<p class="notice" id="message" role="status"></p>';
+  app.innerHTML = shell(header + (reconnecting ? message : '') + screen.main + (reconnecting ? '' : message), screen.side);
   say(notice);
   paintTimer();
   if (focusAction) app.querySelector('[data-action="' + focusAction + '"]' +
@@ -443,18 +478,23 @@ function openRoom(code, token, role, initial) {
         renderRoom();
         return;
       } catch (archiveError) {
-        if (archiveError.status !== 404) return renderMissing(archiveError.message);
+        if (archiveError.status !== 404) return renderMissing(archiveError.message, role, true);
       }
     }
     save(role + ':' + code, null);
     if (role === 'player' && error.status === 401) return renderJoin(code, error.message);
-    renderMissing(error.message);
+    renderMissing(error.message, role);
   } });
 }
 
-function renderMissing(message) {
-  app.innerHTML = shell('<h1>Can’t open this room</h1><p>' +
-    escape(message) + '</p><a class="button primary" href="/">Back home</a>');
+function renderMissing(message, role, retry = false) {
+  document.body.classList.remove('game-started');
+  const action = retry ? '<a class="button primary" href="">Try again</a>' :
+    role === 'player' ? '<a class="button primary" href="/join">Change room code</a>' :
+      '<a class="button primary" href="/">Back home</a>';
+  app.innerHTML = shell('<h1 tabindex="-1">Can’t open this room</h1><p>' +
+    escape(message) + '</p>' + action);
+  app.querySelector('h1').focus();
 }
 
 async function copyInvite() {
@@ -549,8 +589,8 @@ try {
     if (code && !codePattern.test(code)) renderJoin(null, 'Enter the code from your host.');
     else if (code && read('player:' + code)) openRoom(code, read('player:' + code), 'player');
     else renderJoin(code);
-  } else if (route === 'host' && codePattern.test(code || '')) {
-    const token = read('host:' + code);
+  } else if (route === 'host') {
+    const token = codePattern.test(code || '') && read('host:' + code);
     if (token) openRoom(code, token, 'host');
     else renderMissing('Open it in the browser that created the game.');
   } else {
@@ -564,9 +604,9 @@ try {
       accountLink.title = 'Signed in as ' + account.email;
       if (route === 'sign-in') renderSignIn(app, config, account);
       const name = app.querySelector('#player-form [name=name]');
-      if (name && !name.value) name.value = account.name.slice(0, 24);
+      if (name && !name.value && account.name) name.value = account.name.slice(0, 24);
     }).catch(() => {});
   }
 } catch (error) {
-  renderMissing(error.message || 'Could not connect to the quiz server.');
+  renderMissing(error.message || 'Could not connect to the quiz server.', undefined, true);
 }
