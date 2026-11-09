@@ -125,7 +125,7 @@ figcaption { display: flex; justify-content: space-between; gap: 10px; }
 @keyframes podium-arrive { from { opacity: 0; transform: translateY(22px) scale(.94); } to { opacity: 1; transform: none; } }
 .rank { color: #5541a5; }
 .field-label { display: grid; gap: 7px; max-width: 415px; margin: 18px 0 12px; }
-.field-label input { min-width: 0; height: 40px; font: 600 1rem/1.2 Arial, sans-serif; color: var(--ink); padding: 0 10px; border: var(--line); background: #fff; border-radius: 7px; }
+.field-label input, .setup-prompt input { min-width: 0; height: 40px; font: 600 1rem/1.2 Arial, sans-serif; color: var(--ink); padding: 0 10px; border: var(--line); background: #fff; border-radius: 7px; }
 .question-head { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .timer { background: var(--lime); border: var(--line); border-radius: 8px; min-width: 72px; padding: 9px 10px; text-align: center; font: 900 1.5rem/1 var(--mono); }
 .timer.urgent { background: var(--pink); }
@@ -256,17 +256,44 @@ button.answer:disabled { cursor: default; }
 .setup-content { padding: clamp(12px, 3vw, 24px); margin: 0; }
 .setup-card .field-label { max-width: none; margin: 0; }
 .setup-card .field-label[hidden] { display: none; }
-.setup-card select { font: 600 1rem/1.2 Arial, sans-serif; color: var(--ink); border: var(--line); border-radius: 7px; height: 40px; padding: 0 8px; background: #fff; }
+.setup-card select {
+  appearance: none;
+  font: 600 1rem/1.2 Arial, sans-serif;
+  color: var(--ink);
+  border: var(--line);
+  border-radius: 7px;
+  height: 40px;
+  padding: 0 28px 0 10px;
+  background: #fff;
+}
+.setup-select { position: relative; display: block; min-width: 0; }
+.setup-select::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 8px;
+  height: 8px;
+  border: solid var(--ink);
+  border-width: 0 2px 2px 0;
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+@media (forced-colors: active) {
+  .setup-card select { appearance: auto; padding-right: 10px; }
+  .setup-select::after { display: none; }
+}
 .setup-types, .setup-answer { display: grid; align-items: end; gap: 10px; margin-bottom: 12px; }
 .setup-types { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 18px; padding-top: 16px; border-top: 1px solid #b9b0e0; }
 .setup-types select { width: 100%; min-width: 0; }
+.setup-add { display: flex; justify-content: flex-end; }
 .quiz-order { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 22px 0 0; }
 .quiz-order legend { width: 100%; }
 .quiz-order label { display: flex; align-items: center; gap: 8px; line-height: 1.35; cursor: pointer; }
 .quiz-order input { width: 18px; height: 18px; margin: 0; accent-color: #5d46b3; }
-/* AI rephrase: a wand icon sitting at the right end of the QUESTION label row. */
-.setup-prompt-row { position: relative; }
-.setup-ai { position: absolute; top: -7px; right: 0; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid transparent; border-radius: 6px; color: #5d46b3; background: transparent; cursor: pointer; transition: background-color .16s, border-color .16s; }
+.setup-prompt { display: grid; gap: 4px; }
+.setup-prompt-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.setup-ai { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid transparent; border-radius: 6px; color: #5d46b3; background: transparent; cursor: pointer; transition: background-color .16s, border-color .16s; }
 .setup-ai:hover:not(:disabled) { background: var(--lime); border-color: var(--ink); color: var(--ink); }
 .setup-ai:disabled { cursor: default; opacity: .4; }
 .setup-ai[aria-busy="true"] svg { animation: wand-wave .8s ease-in-out infinite alternate; }
@@ -286,6 +313,9 @@ button.answer:disabled { cursor: default; }
   .quiz-setup { padding: 26px 16px 32px; }
   .setup-content { padding: 14px; }
   .setup-actions .button { flex: 1 1 auto; }
+}
+@media (max-width: 420px) {
+  .setup-types { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Text fields show focus by recolouring their own border, not with an extra outline. */

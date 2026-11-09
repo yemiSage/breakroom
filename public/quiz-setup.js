@@ -11,18 +11,19 @@ function questionFields(id) {
   return '<details class="setup-card" data-question open>' +
     '<summary class="setup-summary"><span data-question-label></span><span data-question-preview>Untitled question</span></summary>' +
     '<fieldset class="setup-content"><legend class="sr-only"></legend>' +
-    '<div class="setup-prompt-row"><label class="field-label setup-prompt"><span>QUESTION</span><input name="prompt" maxlength="240" required></label>' +
+    '<div class="setup-prompt"><div class="setup-prompt-row"><label class="field-label" for="prompt-' + id + '">QUESTION</label>' +
     '<button type="button" class="setup-ai" data-rephrase disabled aria-label="Rephrase with AI" title="Rephrase with AI"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 20 11-11"/><path d="m13 7 4 4"/><path d="M18 2.5v3M16.5 4h3M20.5 9v2M19.5 10h2M9.5 3v2M8.5 4h2"/></svg></button></div>' +
+    '<input id="prompt-' + id + '" name="prompt" maxlength="240" required></div>' +
     '<p class="setup-ai-status" role="status"></p>' +
     '<label class="field-label setup-image" hidden>IMAGE<input name="image" type="file" accept="image/jpeg,image/png,image/webp" disabled></label>' +
     answers +
     '<div class="setup-types">' +
-    '<label class="field-label">TYPE<select name="format"><option value="text">Text</option>' +
-    '<option value="image">Image</option></select></label>' +
-    '<label class="field-label">CORRECT<select name="selection"><option value="single">One</option>' +
-    '<option value="multiple">Several</option></select></label>' +
-    '<label class="field-label">LABELS<select name="optionStyle"><option value="alphabet">A B C D</option>' +
-    '<option value="shapes">▲ ■ ● ★</option><option value="emojis">😀 🚀 🌈 🎉</option></select></label></div>' +
+    '<label class="field-label">TYPE<span class="setup-select"><select name="format"><option value="text">Text</option>' +
+    '<option value="image">Image</option></select></span></label>' +
+    '<label class="field-label">CORRECT<span class="setup-select"><select name="selection"><option value="single">One</option>' +
+    '<option value="multiple">Several</option></select></span></label>' +
+    '<label class="field-label">LABELS<span class="setup-select"><select name="optionStyle"><option value="alphabet">A B C D</option>' +
+    '<option value="shapes">▲ ■ ● ★</option><option value="emojis">😀 🚀 🌈 🎉</option></select></span></label></div>' +
     '<button type="button" class="setup-remove" data-remove>Remove question</button></fieldset></details>';
 }
 
@@ -74,10 +75,10 @@ export function openQuizSetup(app, createRoom, back, paraphraseQuestion) {
     '<h1>Write your quiz</h1>' +
     '<form id="quiz-form">' +
     '<div class="setup-questions"></div>' +
-    '<button type="button" class="button" data-add><span aria-hidden="true">+</span> Add question</button>' +
-    '<fieldset class="quiz-order"><legend>SHUFFLE</legend>' +
-    '<label><input type="checkbox" name="randomizeOptions"> Answers</label>' +
-    '<label><input type="checkbox" name="randomizeQuestions"> Questions</label></fieldset>' +
+    '<div class="setup-add"><button type="button" class="button" data-add><span aria-hidden="true">+</span> Add question</button></div>' +
+    '<fieldset class="quiz-order"><legend>GAME SETTINGS</legend>' +
+    '<label><input type="checkbox" name="randomizeOptions"> Shuffle answers</label>' +
+    '<label><input type="checkbox" name="randomizeQuestions"> Shuffle questions</label></fieldset>' +
     '<div class="setup-actions"><button class="button primary" value="custom">Open lobby</button>' +
     '<button class="button" value="starter" formnovalidate>Use sample quiz</button>' +
     '<button class="setup-remove" type="button" data-back>Back</button></div>' +
@@ -128,7 +129,7 @@ export function openQuizSetup(app, createRoom, back, paraphraseQuestion) {
       const prompt = card.querySelector('[name=prompt]');
       const file = card.querySelector('[name=image]');
       card.querySelector('.setup-image').hidden = !image;
-      card.querySelector('.setup-prompt span').textContent = image ? 'CAPTION (OPTIONAL)' : 'QUESTION';
+      card.querySelector('.setup-prompt label').textContent = image ? 'CAPTION (OPTIONAL)' : 'QUESTION';
       prompt.required = !image;
       file.disabled = !image;
       file.required = image;
