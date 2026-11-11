@@ -103,7 +103,6 @@ function renderLanding() {
   const localPreview = config.mode === 'local' && ['localhost', '127.0.0.1'].includes(location.hostname);
   let draft;
   let key;
-  app.querySelector('#message').insertAdjacentHTML('afterend', savedRooms('host'));
 
   function showMode() {
     const selected = modes.find(option => option.checked).value;
