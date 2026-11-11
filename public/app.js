@@ -392,18 +392,12 @@ function finale(host) {
 }
 
 function finish(host) {
-  const archive = state.archiveStatus && ({
-    saved: 'Results saved.',
-    pending: 'Results saved. Uploading…',
-    synced: 'Results saved and uploaded.'
-  })[state.archiveStatus];
   finaleStep = currentFinaleStep();
   return {
     main: '<div id="finale">' + finale(host) + '</div>' +
-      (archive ? '<div class="feedback" role="status"><p>' + archive + '</p></div>' : '') +
       '<a class="button primary" href="' + (host ? '/?mode=' + state.mode : '/join') + '">' +
       (host ? 'New game' : 'Join another game') + '</a>',
-    side: host ? leaderboard(state.leaderboard, true) + (archive ? button('Download results', 'export') : '') : ''
+    side: host ? leaderboard(state.leaderboard, true) + (state.archiveStatus ? button('Download results', 'export') : '') : ''
   };
 }
 
