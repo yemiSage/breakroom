@@ -12,13 +12,15 @@ function questionFields(id) {
     '<summary class="setup-summary"><span data-question-label></span><span data-question-preview>Untitled question</span></summary>' +
     '<fieldset class="setup-content"><legend class="sr-only"></legend>' +
     '<div class="setup-prompt"><div class="setup-prompt-row"><label class="field-label" for="prompt-' + id + '">QUESTION</label>' +
-    '<button type="button" class="setup-ai" data-rephrase disabled aria-label="Rephrase with AI" title="Rephrase with AI"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 8c.8 4.6 2.4 6.2 7 7-4.6.8-6.2 2.4-7 7-.8-4.6-2.4-6.2-7-7 4.6-.8 6.2-2.4 7-7Z"/><path fill="currentColor" stroke="none" d="M17.5 1c.6 3.6 1.9 4.9 5.5 5.5-3.6.6-4.9 1.9-5.5 5.5-.6-3.6-1.9-4.9-5.5-5.5 3.6-.6 4.9-1.9 5.5-5.5Z"/></svg></button></div>' +
+    '<button type="button" class="setup-ai" data-rephrase disabled title="Rephrase the question">' +
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 8c.8 4.6 2.4 6.2 7 7-4.6.8-6.2 2.4-7 7-.8-4.6-2.4-6.2-7-7 4.6-.8 6.2-2.4 7-7Z"/><path fill="currentColor" stroke="none" d="M17.5 1c.6 3.6 1.9 4.9 5.5 5.5-3.6.6-4.9 1.9-5.5 5.5-.6-3.6-1.9-4.9-5.5-5.5 3.6-.6 4.9-1.9 5.5-5.5Z"/></svg>' +
+    'Write with AI</button></div>' +
     '<input id="prompt-' + id + '" name="prompt" maxlength="240" required></div>' +
     '<p class="setup-ai-status" role="status"></p>' +
     '<label class="field-label setup-image" hidden>IMAGE<input name="image" type="file" accept="image/jpeg,image/png,image/webp" disabled></label>' +
     answers +
     '<div class="setup-types">' +
-    '<label class="field-label">TYPE<span class="setup-select"><select name="format"><option value="text">Text</option>' +
+    '<label class="field-label">QUESTION TYPE<span class="setup-select"><select name="format"><option value="text">Text</option>' +
     '<option value="image">Image</option></select></span></label>' +
     '<label class="field-label">CORRECT<span class="setup-select"><select name="selection"><option value="single">One</option>' +
     '<option value="multiple">Several</option></select></span></label>' +
@@ -137,7 +139,7 @@ export function openQuizSetup(app, createRoom, back, paraphraseQuestion) {
       const labels = answerLabels[field.value];
       [...card.querySelectorAll('.setup-answer')].forEach((answer, index) => {
         answer.querySelector('[data-answer-label]').innerHTML = 'ANSWER ' +
-          (labels[index].path ? '<span class="sr-only">' + labels[index].name + '</span>' : '') +
+          (labels[index].path || labels[index].emoji ? '<span class="sr-only">' + labels[index].name + '</span>' : '') +
           labelIcon(labels[index]);
         answer.querySelector('[data-correct-label]').textContent = 'answer ' + labels[index].name;
       });

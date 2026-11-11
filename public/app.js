@@ -24,6 +24,12 @@ const save = (key, value) => {
 };
 const playerKey = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
 
+const playIcon = '<svg class="play-icon" width="30" height="30" viewBox="0 0 28 28" aria-hidden="true">' +
+  '<rect x="4" y="4" width="22" height="22" rx="6" fill="var(--ink)"/>' +
+  '<rect x="1.5" y="1.5" width="22" height="22" rx="6" fill="var(--lime)" stroke="var(--ink)" stroke-width="2"/>' +
+  '<path d="M9 7.5v10l8.5-5z" fill="var(--ink)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>' +
+  '</svg>';
+
 function savedRooms(role) {
   const prefix = 'breakroom:' + role + ':';
   const codes = [];
@@ -41,7 +47,7 @@ function savedRooms(role) {
   if (!codes.length) return '';
   const title = role === 'host' ? 'Your hosted rooms' : 'Your joined rooms';
   const route = role === 'host' ? '/host/' : '/join/';
-  return '<details class="saved-rooms"><summary>' + title + '</summary><ul>' +
+  return '<details class="saved-rooms"><summary>' + playIcon + title + '</summary><ul>' +
     codes.sort().map(code => '<li><a class="button" href="' + route + code +
       '" aria-label="Open room ' + code + '">' + code + '</a></li>').join('') + '</ul></details>';
 }
@@ -70,9 +76,12 @@ function tag(text, color = '') {
   return '<span class="tag ' + color + '">' + text + '</span>';
 }
 
-function shell(main, side = '') {
-  return '<section class="game' + (side ? '' : ' solo') + '"><div class="game-main">' + main +
-    '</div>' + (side ? '<aside class="game-side">' + side + '</aside>' : '') + '</section>';
+function shell(main, side = '', { inviteFirst = false } = {}) {
+  const layout = inviteFirst ? ' host-lobby' : side ? '' : ' solo';
+  const mainPanel = '<div class="game-main">' + main + '</div>';
+  const sidePanel = side ? '<aside class="game-side">' + side + '</aside>' : '';
+  return '<section class="game' + layout + '">' +
+    (inviteFirst ? sidePanel + mainPanel : mainPanel + sidePanel) + '</section>';
 }
 
 function say(message) {
@@ -91,24 +100,28 @@ function renderLanding() {
   const help = app.querySelector('#launch-help');
   const hostAccess = app.querySelector('#host-access');
   const hostKey = hostForm.elements.hostKey;
+  const localPreview = config.mode === 'local' && ['localhost', '127.0.0.1'].includes(location.hostname);
   let draft;
   let key;
   app.querySelector('#message').insertAdjacentHTML('afterend', savedRooms('host'));
 
   function showMode() {
     const selected = modes.find(option => option.checked).value;
+    const previewOnline = localPreview && selected === 'online';
     const needsLaptop = selected === 'local' && (config.mode !== 'local' || !config.canHost);
     const needsOnline = selected === 'online' && config.mode === 'local' && !config.onlineOrigin && !read('online-origin');
     const needsKey = selected === 'local' && config.needsHostKey;
     hostAccess.hidden = !needsKey;
     hostKey.disabled = !needsKey;
     hostKey.required = Boolean(needsKey);
-    create.disabled = needsOnline || busy;
+    create.disabled = (needsOnline && !previewOnline) || busy;
     create.textContent = needsLaptop ? 'Open on host laptop' :
-      draft && selected === config.mode ? 'Continue setup' : 'Host a game';
+      draft && (selected === config.mode || previewOnline) ? 'Continue setup' : 'Host a game';
     help.innerHTML = needsLaptop
       ? 'Start Breakroom on the host laptop first.'
-      : needsOnline
+      : previewOnline
+        ? ''
+        : needsOnline
         ? '<form id="online-form"><label class="field-label">ONLINE ADDRESS<input name="origin" type="url" placeholder="https://your-worker.workers.dev" required></label><button class="button">Open Online</button></form>'
         : selected === 'local' && config.demo
           ? '<strong>Demo:</strong> 3 questions, 8 seconds each.'
@@ -132,7 +145,7 @@ function renderLanding() {
   });
   hostForm.addEventListener('submit', event => {
     event.preventDefault();
-    const mode = modes.find(option => option.checked).value;
+    const mode = localPreview ? 'local' : modes.find(option => option.checked).value;
     if (mode === 'local' && (config.mode !== 'local' || !config.canHost)) {
       location.href = config.localOrigin + '/?mode=local';
       return;
@@ -251,7 +264,7 @@ function leaderboard(rows, final, start = 0) {
 
 function invite() {
   return '<p class="meta">ROOM CODE</p><p class="room-code">' + session.code + '</p>' +
-    (config.mode === 'online' ? '' : '<p class="hint">' + (config.lanAvailable ? 'Players must be on your Wi-Fi.'
+    (config.mode === 'online' ? '' : '<p class="hint">' + (config.lanAvailable ? 'To join, connect to the same Wi‑Fi network or hotspot as the host.'
       : 'No network found. Connect this laptop to Wi-Fi.') + '</p>') +
     (config.mode === 'local' && !config.inviteOrigin.startsWith('https:')
       ? '<p class="hint">Use a trusted network for Local games.</p>' : '') +
@@ -274,7 +287,7 @@ function lobby(host) {
     return {
       main: '<h1>Waiting for players</h1>' +
         '<h2>' + state.playerCount + ' / ' + state.capacity + ' joined</h2>' + roster +
-        '<div class="lobby-actions">' + button('Start game', 'start',
+        '<div class="lobby-actions">' + button(playIcon + 'Start game', 'start',
           { primary: true, disabled: disabled || !state.playerCount }) +
         button(state.locked ? 'Resume joins' : 'Pause joins', 'lock', { disabled }) + '</div>',
       side: invite()
@@ -414,7 +427,7 @@ function renderRoom() {
   const message = '<p class="notice" id="message" role="status"></p>';
   const previousImage = app.querySelector('.question-image');
   app.innerHTML = shell(header + (reconnecting ? message : '') + screen.main + (reconnecting ? '' : message),
-    screen.side);
+    screen.side, { inviteFirst: host && state.phase === 'lobby' });
   const image = app.querySelector('.question-image');
   if (image) {
     const src = session.path + '/image/' + state.round + '?role=' + session.role;

@@ -224,9 +224,13 @@ async function handleRequest(req, res) {
     if (req.method === 'GET' || req.method === 'HEAD') {
       const file = files.get(pathname === '/' || pageRoute.test(pathname) ? '/index.html' : pathname);
       if (file) {
+        // The browser annotation overlay uses inline styles on local preview pages.
+        const isLoopbackPage = isHostLaptop && ['localhost', '127.0.0.1'].includes(url.hostname) &&
+          file.type.startsWith('text/html');
+        const styleSources = isLoopbackPage ? "'self' 'unsafe-inline'" : "'self'";
         res.writeHead(200, { 'Content-Type': file.type, 'Content-Length': file.data.length,
           'Cache-Control': 'no-cache',
-          'Content-Security-Policy': "default-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" });
+          'Content-Security-Policy': `default-src 'self'; style-src ${styleSources}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'` });
         res.end(req.method === 'HEAD' ? undefined : file.data);
         return;
       }
