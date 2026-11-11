@@ -20,9 +20,9 @@ export function returnPath() {
 
 export function renderSignIn(app, config, user) {
   const next = returnPath();
-  const emailEnabled = Boolean(config.auth?.email);
   const local = config.mode === 'local';
   const online = config.onlineOrigin;
+  const emailEnabled = Boolean(config.auth?.email || (local && online));
   const googleEnabled = Boolean(config.auth?.google || (local && online));
   document.body.classList.add('sign-in-view');
   const content = user
@@ -53,7 +53,7 @@ export function renderSignIn(app, config, user) {
           !emailEnabled && !googleEnabled ? 'Sign-in isn’t available yet.' :
             !emailEnabled ? 'Email sign-in isn’t available yet.' :
               'Google sign-in isn’t available yet.') + '</p>' : '') +
-      (local && online ? '<p class="auth-availability">Google sign-in opens Breakroom Online.</p>' : '') +
+      (local && online ? '<p class="auth-availability">Sign-in continues on Breakroom Online.</p>' : '') +
       '<div class="auth-guest"><a class="button" href="' + escape(next) + '">Continue as guest</a></div>';
 
   app.innerHTML = '<section class="auth-page" aria-labelledby="auth-title"><div class="auth-story">' +
@@ -132,6 +132,12 @@ export function renderSignIn(app, config, user) {
   emailForm.addEventListener('submit', event => {
     event.preventDefault();
     email = emailField.value.trim().toLowerCase();
+    if (local && online) {
+      const destination = new URL('/sign-in', online);
+      destination.hash = new URLSearchParams({ email }).toString();
+      location.assign(destination.href);
+      return;
+    }
     void sendCode();
   });
   resend.addEventListener('click', () => void sendCode());
@@ -179,7 +185,17 @@ export function renderSignIn(app, config, user) {
       setBusy(false);
     }
   });
-  if (new URLSearchParams(location.search).has('error')) {
+  const transferredEmail = new URLSearchParams(location.hash.slice(1)).get('email');
+  if (!local && transferredEmail) {
+    history.replaceState(null, '', location.pathname + location.search);
+    if (emailEnabled && transferredEmail.length <= 254) {
+      emailField.value = transferredEmail;
+      if (emailField.checkValidity()) {
+        email = transferredEmail.trim().toLowerCase();
+        void sendCode();
+      }
+    }
+  } else if (new URLSearchParams(location.search).has('error')) {
     message.textContent = 'Sign-in didn’t finish. Try again.';
   } else if (!local && googleEnabled && new URLSearchParams(location.search).get('provider') === 'google') {
     google.click();
