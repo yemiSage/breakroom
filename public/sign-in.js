@@ -21,9 +21,9 @@ export function returnPath() {
 export function renderSignIn(app, config, user) {
   const next = returnPath();
   const emailEnabled = Boolean(config.auth?.email);
-  const googleEnabled = Boolean(config.auth?.google);
   const local = config.mode === 'local';
   const online = config.onlineOrigin;
+  const googleEnabled = Boolean(config.auth?.google || (local && online));
   document.body.classList.add('sign-in-view');
   const content = user
     ? '<div class="auth-greeting"><h2>Welcome back</h2>' +
@@ -36,8 +36,9 @@ export function renderSignIn(app, config, user) {
       '<path fill="#34a853" d="M12 22c2.7 0 4.96-.9 6.61-2.41l-3.23-2.51c-.89.6-2.03.96-3.38.96-2.6 0-4.81-1.76-5.6-4.12H3.06v2.59A10 10 0 0 0 12 22Z"/>' +
       '<path fill="#fbbc05" d="M6.4 13.92A6 6 0 0 1 6.09 12c0-.67.11-1.32.31-1.92V7.49H3.06A10 10 0 0 0 2 12c0 1.61.39 3.14 1.06 4.51l3.34-2.59Z"/>' +
       '<path fill="#ea4335" d="M12 5.96c1.47 0 2.79.51 3.83 1.51l2.87-2.87A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.94 5.49l3.34 2.59C7.19 7.72 9.4 5.96 12 5.96Z"/>' +
-      '</svg>Continue with Google</button><div class="auth-divider"><span>or</span></div>' +
-      '<form id="email-sign-in"><label class="field-label" for="auth-email">EMAIL</label>' +
+      '</svg>Continue with Google</button>' +
+      (emailEnabled ? '<div class="auth-divider"><span>or</span></div>' : '') +
+      '<form id="email-sign-in"' + (emailEnabled ? '' : ' hidden') + '><label class="field-label" for="auth-email">EMAIL</label>' +
       '<input id="auth-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="254" placeholder="you@example.com" required' +
       (emailEnabled ? '' : ' disabled') + '><button class="button primary"' +
       (emailEnabled ? '' : ' disabled aria-describedby="auth-availability"') + '>Email me a code</button></form></div>' +
@@ -52,7 +53,7 @@ export function renderSignIn(app, config, user) {
           !emailEnabled && !googleEnabled ? 'Sign-in isn’t available yet.' :
             !emailEnabled ? 'Email sign-in isn’t available yet.' :
               'Google sign-in isn’t available yet.') + '</p>' : '') +
-      (local && online ? '<a class="auth-online-link" href="' + escape(online + '/sign-in') + '">Sign in on Breakroom Online</a>' : '') +
+      (local && online ? '<p class="auth-availability">Google sign-in opens Breakroom Online.</p>' : '') +
       '<div class="auth-guest"><a class="button" href="' + escape(next) + '">Continue as guest</a></div>';
 
   app.innerHTML = '<section class="auth-page" aria-labelledby="auth-title"><div class="auth-story">' +
@@ -157,6 +158,12 @@ export function renderSignIn(app, config, user) {
   });
   google.addEventListener('click', async () => {
     if (busy) return;
+    if (local && online) {
+      const destination = new URL('/sign-in', online);
+      destination.searchParams.set('provider', 'google');
+      location.assign(destination.href);
+      return;
+    }
     setBusy(true);
     message.textContent = '';
     try {
@@ -174,5 +181,7 @@ export function renderSignIn(app, config, user) {
   });
   if (new URLSearchParams(location.search).has('error')) {
     message.textContent = 'Sign-in didn’t finish. Try again.';
+  } else if (!local && googleEnabled && new URLSearchParams(location.search).get('provider') === 'google') {
+    google.click();
   }
 }
