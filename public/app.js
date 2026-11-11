@@ -397,7 +397,7 @@ function finish(host) {
     main: '<div id="finale">' + finale(host) + '</div>' +
       '<a class="button primary" href="' + (host ? '/?mode=' + state.mode : '/join') + '">' +
       (host ? 'New game' : 'Join another game') + '</a>',
-    side: host ? leaderboard(state.leaderboard, true) + (state.archiveStatus ? button('Download results', 'export') : '') : ''
+    side: host ? leaderboard(state.leaderboard, true) : ''
   };
 }
 
@@ -414,8 +414,8 @@ function renderRoom() {
   const choice = focusAction && previous.dataset.choice;
   const player = focusAction && previous.dataset.player;
   const host = session.role === 'host';
-  const status = tag({ lobby: 'LOBBY', answering: 'LIVE', reveal: 'REVEAL', final: 'FINISHED' }[state.phase], 'green');
-  const header = host ? '<div class="status-row">' + status + '</div>' : '';
+  const status = tag({ lobby: 'LOBBY', answering: 'LIVE', reveal: 'REVEAL' }[state.phase], 'green');
+  const header = host && state.phase !== 'final' ? '<div class="status-row">' + status + '</div>' : '';
   const reconnecting = !connected && state.phase !== 'final';
   const screen = state.phase === 'lobby' ? lobby(host) : state.phase === 'final' ? finish(host) : roundScreen(host);
   const message = '<p class="notice" id="message" role="status"></p>';
@@ -575,19 +575,6 @@ app.addEventListener('click', async event => {
     document.querySelector('#host-leaderboard').hidden = !showHostLeaderboard;
     target.outerHTML = leaderboardToggle();
     app.querySelector('[data-action=leaderboard]').focus({ preventScroll: true });
-    return;
-  }
-  if (action === 'export') {
-    try {
-      const { record } = await api(session.path + '/results', { role: session.role });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' }));
-      link.download = 'breakroom-' + session.code + '.json';
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-    } catch (error) {
-      say(error.message);
-    }
     return;
   }
   if (busy || !connected) return;
