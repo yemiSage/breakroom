@@ -53,7 +53,6 @@ export function renderSignIn(app, config, user) {
           !emailEnabled && !googleEnabled ? 'Sign-in isn’t available yet.' :
             !emailEnabled ? 'Email sign-in isn’t available yet.' :
               'Google sign-in isn’t available yet.') + '</p>' : '') +
-      (local && online ? '<p class="auth-availability">Sign-in continues on Breakroom Online.</p>' : '') +
       '<div class="auth-guest"><a class="button" href="' + escape(next) + '">Continue as guest</a></div>';
 
   app.innerHTML = '<section class="auth-page" aria-labelledby="auth-title"><div class="auth-story">' +
