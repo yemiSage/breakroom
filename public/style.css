@@ -98,6 +98,7 @@ figcaption { display: flex; justify-content: space-between; gap: 10px; }
 .game.host-lobby h1 { font-size: clamp(2rem, 3.5vw, 3rem); }
 .game .question-title { font-size: clamp(1.8rem, 3.6vw, 3.5rem); line-height: 1.07; letter-spacing: -.045em; }
 .game h2 { font-size: clamp(1.25rem, 2.25vw, 1.8rem); letter-spacing: -.04em; margin-bottom: 10px; }
+.game .join-count { padding-bottom: 15px; }
 .game p { line-height: 1.45; }
 .status-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 21px; }
 .game-main > .notice:not(:last-child) { margin: 0 0 14px; }

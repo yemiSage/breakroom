@@ -289,7 +289,7 @@ function lobby(host) {
       : '<p class="hint">No one yet.</p>';
     return {
       main: '<h1>Waiting for players</h1>' +
-        '<h2>' + state.playerCount + ' / ' + state.capacity + ' joined</h2>' + roster +
+        '<h2 class="join-count">' + state.playerCount + ' / ' + state.capacity + ' joined</h2>' + roster +
         '<div class="lobby-actions">' + button(playIcon + 'Start game', 'start',
           { primary: true, disabled: disabled || !state.playerCount }) +
         button(state.locked ? 'Resume joins' : 'Pause joins', 'lock', { disabled }) + '</div>',
