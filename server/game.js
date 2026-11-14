@@ -1,6 +1,6 @@
 import { questions } from './questions.js';
 
-export const capacity = 100;
+export const capacity = 200;
 const duration = 20_000;
 const points = 100;
 

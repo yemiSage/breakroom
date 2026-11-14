@@ -4,7 +4,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { networkInterfaces } from 'node:os';
 import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
-import { GameError, getQuestion, join, newRoom, reveal, snapshot } from './game.js';
+import { GameError, newRoom, reveal, snapshot } from './game.js';
 import { openArchive } from './archive.js';
 import { createPayloadLimit, prepareDeck } from './deck.js';
 import { readParaphrase } from './paraphrase.js';
@@ -22,9 +22,6 @@ const scheme = certFile ? 'https' : 'http';
 const portSuffix = port === (certFile ? 443 : 80) ? '' : ':' + port;
 const hostOrigin = scheme + '://127.0.0.1' + portSuffix;
 const demo = process.argv.includes('--demo') || process.env.BREAKROOM_DEMO === '1';
-// Simulation adds bot players from the host laptop so one person can run a full game locally.
-const simulate = process.argv.includes('--simulate') || process.env.BREAKROOM_SIMULATE === '1';
-const botNames = ['Sim Ada', 'Sim Bayo', 'Sim Chidi', 'Sim Dara', 'Sim Efe'];
 if (hostKey && !/^[a-f0-9]{32}$/.test(hostKey)) {
   throw new Error('BREAKROOM_HOST_KEY must be a 32-character lowercase hex key.');
 }
@@ -95,62 +92,6 @@ function schedule(entry) {
   }, Math.max(0, nextWake(entry.room) - Date.now())).unref();
 }
 
-function applyResult(entry, result) {
-  if (!result.audience) return;
-  const previousWake = nextWake(entry.room);
-  if (result.next.phase === 'final' && entry.room.phase !== 'final') {
-    result.next.archiveStatus = archive.save(result.next, Date.now());
-    result.state.archiveStatus = result.next.archiveStatus;
-  }
-  entry.room = result.next;
-  if (nextWake(entry.room) !== previousWake) schedule(entry);
-  publish(entry, result.audience);
-  scheduleBots(entry);
-}
-
-// Each bot answers once per round after a random delay, correct about 65% of the time.
-function scheduleBots(entry) {
-  const { room } = entry;
-  if (!entry.bots?.length || room.phase !== 'answering' || entry.botRound === room.round) return;
-  entry.botRound = room.round;
-  const round = room.round;
-  const question = getQuestion(room, round);
-  const window = Math.max(1000, room.deadline - Date.now() - 500);
-  for (const bot of entry.bots) {
-    const delay = 600 + Math.random() * (window - 600);
-    setTimeout(() => {
-      if (entry.room.phase !== 'answering' || entry.room.round !== round) return;
-      const count = question.options.length;
-      const correct = question.correct;
-      let choice;
-      if (Math.random() < bot.skill) choice = correct;
-      else if (Array.isArray(correct)) choice = [Math.floor(Math.random() * count)];
-      else choice = (correct + 1 + Math.floor(Math.random() * (count - 1))) % count;
-      try {
-        applyResult(entry, handleAction(entry.room, 'answer', { round, choice }, bot.token, Date.now()));
-      } catch {
-        // A bot that misses the window simply skips the round.
-      }
-    }, delay).unref();
-  }
-}
-
-function addBots(entry) {
-  const { room } = entry;
-  if (room.phase !== 'lobby') throw new GameError(409, 'Add test players before the game starts.');
-  const next = structuredClone({ ...room, deck: undefined });
-  if (room.deck) next.deck = room.deck;
-  entry.bots ??= [];
-  const taken = new Set(next.players.filter(player => !player.removed).map(player => player.name));
-  for (const name of botNames) {
-    if (taken.has(name)) continue;
-    const token = makeToken();
-    join(next, name, token);
-    entry.bots.push({ token, skill: 0.45 + Math.random() * 0.4 });
-  }
-  return { next, audience: 'all', state: snapshot(next, { role: 'host' }, Date.now()) };
-}
-
 async function respond(res, response) {
   res.writeHead(response.status, Object.fromEntries(response.headers));
   res.end(Buffer.from(await response.arrayBuffer()));
@@ -177,8 +118,7 @@ async function handleRequest(req, res) {
     if (req.method === 'GET' && pathname === '/api/config') {
       return await respond(res, json({ mode: 'local', inviteOrigin, lanAvailable: Boolean(lanHost),
         localOrigin: hostOrigin, onlineOrigin, canHost: isHostLaptop || Boolean(hostKey),
-        needsHostKey: !isHostLaptop && Boolean(hostKey), demo, simulate: simulate && isHostLaptop,
-        aiAvailable: Boolean(onlineOrigin) }));
+        needsHostKey: !isHostLaptop && Boolean(hostKey), demo, aiAvailable: Boolean(onlineOrigin) }));
     }
     if (req.method === 'POST' && pathname === '/api/paraphrase') {
       const request = new Request(url, { method: 'POST', headers: req.headers, body: Readable.toWeb(req), duplex: 'half' });
@@ -244,20 +184,6 @@ async function handleRequest(req, res) {
       return await respond(res, cookie ? json(saved) : roomSession(json(saved), request, code, 'host', token, 2_592_000));
     }
 
-    const simRoute = pathname.match(/^\/api\/rooms\/([A-HJ-NP-Z2-9]{8})\/simulate$/);
-    if (simRoute && req.method === 'POST') {
-      if (!simulate || !isHostLaptop) throw new GameError(404, 'Page not found.');
-      const request = new Request(url, { method: 'POST', headers: req.headers });
-      checkOrigin(request, true);
-      const entry = rooms.get(simRoute[1]);
-      if (!entry || entry.room.host !== roomCookie(request, simRoute[1], 'host')) {
-        throw new GameError(403, 'Only the host can add test players.');
-      }
-      const result = addBots(entry);
-      applyResult(entry, result);
-      return await respond(res, json({ state: result.state }));
-    }
-
     const route = pathname.match(roomRoute);
     if (route) {
       const [, code, action] = route;
@@ -271,7 +197,16 @@ async function handleRequest(req, res) {
       const entry = rooms.get(code);
       const result = handleAction(entry?.room, action === 'live' ? 'state' : action, input, token, Date.now(),
         () => entry.admit(req.socket.remoteAddress));
-      applyResult(entry, result);
+      if (result.audience) {
+        const previousWake = nextWake(entry.room);
+        if (result.next.phase === 'final' && entry.room.phase !== 'final') {
+          result.next.archiveStatus = archive.save(result.next, Date.now());
+          result.state.archiveStatus = result.next.archiveStatus;
+        }
+        entry.room = result.next;
+        if (nextWake(entry.room) !== previousWake) schedule(entry);
+        publish(entry, result.audience);
+      }
       if (action !== 'live') return await respond(res, roomResponse(result, action, request, code));
 
       const member = token === entry.room.host ? { role: 'host' } :
@@ -321,6 +256,5 @@ setInterval(() => {
 
 server.listen(port, '0.0.0.0', () => {
   console.log('BREAKROOM_READY ' + hostOrigin);
-  if (simulate) console.log('SIMULATION on: use "Add 5 test players" in the host lobby.');
   for (const host of addresses()) console.log('LAN ' + scheme + '://' + host + portSuffix);
 });

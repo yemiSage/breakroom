@@ -111,8 +111,10 @@ figcaption { display: flex; justify-content: space-between; gap: 10px; }
 .invite { display: block; overflow-wrap: anywhere; margin: 10px 0 17px; font-size: .9rem; }
 .roster, .scores { padding: 0; list-style: none; margin: 15px 0; }
 .roster { display: flex; flex-wrap: wrap; gap: 6px; }
-.roster li { padding: 6px 9px; background: #faf7ef; border: 1px solid var(--ink); border-radius: 4px; overflow-wrap: anywhere; }
-.roster-remove { margin-left: 8px; padding: 2px 4px; border: 0; background: transparent; text-decoration: underline; cursor: pointer; font-size: .8rem; }
+.roster li { display: inline-flex; align-items: center; padding: 6px 9px; background: #faf7ef; border: 1px solid var(--ink); border-radius: 4px; overflow-wrap: anywhere; }
+.roster-remove { display: inline-grid; place-items: center; width: 26px; height: 26px; margin: -4px -5px -4px 6px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #f26d6d; cursor: pointer; }
+.roster-remove:hover:not(:disabled) { background: #ffe3e3; color: #e04848; }
+.roster-remove:disabled { opacity: .45; cursor: default; }
 .lobby-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .scores li { display: grid; grid-template-columns: 3ch minmax(0, 1fr) auto; gap: 9px; align-items: baseline; padding: 10px 4px; border-bottom: 1px solid #9b90c5; overflow-wrap: anywhere; }
 .scores li.you { font-weight: 800; }

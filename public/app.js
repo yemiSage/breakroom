@@ -30,6 +30,10 @@ const playIcon = '<svg class="play-icon" width="30" height="30" viewBox="0 0 28 
   '<path d="M9 7.5v10l8.5-5z" fill="var(--ink)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>' +
   '</svg>';
 
+const binIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6"/>' +
+  '<path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>';
+
 function savedRooms(role) {
   const prefix = 'breakroom:' + role + ':';
   const codes = [];
@@ -281,15 +285,14 @@ function lobby(host) {
       state.roster.map((name, index) => '<li>' + escape(name) +
         '<button type="button" class="roster-remove" data-action="remove" data-player="' +
         escape(state.rosterIds[index]) + '" aria-label="Remove ' + escape(name) + '"' +
-        (disabled ? ' disabled' : '') + '>Remove</button></li>').join('') + '</ul>'
+        (disabled ? ' disabled' : '') + '>' + binIcon + '</button></li>').join('') + '</ul>'
       : '<p class="hint">No one yet.</p>';
     return {
       main: '<h1>Waiting for players</h1>' +
         '<h2>' + state.playerCount + ' / ' + state.capacity + ' joined</h2>' + roster +
         '<div class="lobby-actions">' + button(playIcon + 'Start game', 'start',
           { primary: true, disabled: disabled || !state.playerCount }) +
-        button(state.locked ? 'Resume joins' : 'Pause joins', 'lock', { disabled }) +
-        (config.simulate ? button('Add 5 test players', 'simulate', { disabled }) : '') + '</div>',
+        button(state.locked ? 'Resume joins' : 'Pause joins', 'lock', { disabled }) + '</div>',
       side: invite()
     };
   }
@@ -597,8 +600,7 @@ app.addEventListener('click', async event => {
     for (const answer of app.querySelectorAll('button[data-action=answer], button[data-action=toggle]')) answer.disabled = true;
   }
   try {
-    const result = await api(session.path + '/' + (answering ? 'answer' : action),
-      { role: session.role, data: action === 'simulate' ? {} : data });
+    const result = await api(session.path + '/' + (answering ? 'answer' : action), { role: session.role, data });
     apply(result.state);
   } catch (error) {
     notice = error.message || 'Could not reach the server. Try again.';

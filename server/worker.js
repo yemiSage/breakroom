@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { createPayloadLimit, prepareDeck, recordPayloadLimit } from './deck.js';
-import { GameError, identify, newRoom, reveal, snapshot } from './game.js';
+import { GameError, capacity, identify, newRoom, reveal, snapshot } from './game.js';
 import { paraphrase, readParaphrase } from './paraphrase.js';
 import { authAvailability } from './auth.js';
 import { connectionsPerMember, joinLimiter, roomCookie, roomSession } from './room-security.js';
@@ -74,7 +74,7 @@ export default {
         if (!env.BREAKROOM_RESULTS_KEY || bearer(request) !== env.BREAKROOM_RESULTS_KEY) {
           throw new GameError(403, 'Results access is restricted.');
         }
-        if (request.method !== 'GET' && request.method !== 'PUT') throw new GameError(405, 'Method not allowed.');
+        if (!['GET', 'PUT', 'DELETE'].includes(request.method)) throw new GameError(405, 'Method not allowed.');
         return await env.ROOMS.getByName('result:' + result[1]).fetch(request);
       }
       if (path === '/api/config' && request.method === 'GET') {
@@ -176,11 +176,15 @@ export class QuizRoom extends DurableObject {
           const record = await this.ctx.storage.get('result');
           return record ? json({ record }) : json({ error: 'Result not found.' }, 404);
         }
+        if (request.method === 'DELETE') {
+          await this.ctx.storage.deleteAll();
+          return new Response(null, { status: 204 });
+        }
         const record = await readInput(request, recordPayloadLimit);
         if (!/^[A-HJ-NP-Z2-9]{8}$/.test(record.code || '') ||
             !Number.isFinite(Date.parse(record.completedAt)) ||
             !Array.isArray(record.questions) || !record.questions.length ||
-            !Array.isArray(record.players) || !record.players.length || record.players.length > 100) {
+            !Array.isArray(record.players) || !record.players.length || record.players.length > capacity) {
           throw new GameError(400, 'Invalid completed game.');
         }
         return await this.ctx.blockConcurrencyWhile(async () => {

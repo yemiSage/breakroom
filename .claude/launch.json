@@ -4,37 +4,15 @@
     {
       "name": "breakroom",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "start"
-      ],
-      "env": {
-        "PORT": "3000"
-      },
+      "runtimeArgs": ["start"],
+      "env": { "PORT": "3000" },
       "port": 3000
     },
     {
       "name": "breakroom-demo",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "demo"
-      ],
-      "env": {
-        "PORT": "3000"
-      },
-      "port": 3000
-    },
-    {
-      "name": "breakroom-simulate",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "simulate"
-      ],
-      "env": {
-        "PORT": "3000",
-        "BREAKROOM_ONLINE_URL": ""
-      },
+      "runtimeArgs": ["run", "demo"],
+      "env": { "PORT": "3000" },
       "port": 3000
     }
   ]
