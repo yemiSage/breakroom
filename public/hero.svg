@@ -1,52 +1,52 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="500" viewBox="0 0 600 500" fill="none">
   <defs>
     <pattern id="dots" width="5" height="5" patternUnits="userSpaceOnUse">
-      <circle cx="1" cy="1" r=".85" fill="#25203d" opacity=".34"/>
+      <circle cx="1" cy="1" r=".85" fill="#2d2a45" opacity=".34"/>
     </pattern>
     <pattern id="lines" width="6" height="6" patternTransform="rotate(40)" patternUnits="userSpaceOnUse">
-      <path d="M0 0v6" stroke="#25203d" stroke-width="1" opacity=".35"/>
+      <path d="M0 0v6" stroke="#2d2a45" stroke-width="1" opacity=".35"/>
     </pattern>
   </defs>
-  <ellipse cx="302" cy="293" rx="258" ry="143" transform="rotate(-23 302 293)" stroke="#7062b7" stroke-width="1.3" stroke-dasharray="5 7"/>
+  <ellipse cx="302" cy="293" rx="258" ry="143" transform="rotate(-23 302 293)" stroke="#8173c6" stroke-width="1.3" stroke-dasharray="5 7"/>
   <ellipse cx="301" cy="427" rx="179" ry="22" fill="url(#dots)"/>
-  <g stroke="#19182a" stroke-width="3.6" stroke-linejoin="round">
-    <path d="M126 83l12 29 30 11-30 12-12 29-11-29-30-12 30-11 11-29Z" fill="#f8f4e9"/>
-    <path d="M480 119l8 18 19 8-19 7-8 19-7-19-19-7 19-8 7-18Z" fill="#ffafda"/>
-    <path d="M461 393l10 25 26 11-26 10-10 25-10-25-25-10 25-11 10-25Z" fill="#f8f4e9"/>
+  <g stroke="#2d2a45" stroke-width="3.6" stroke-linejoin="round">
+    <path d="M126 83l12 29 30 11-30 12-12 29-11-29-30-12 30-11 11-29Z" fill="#fbfaf7"/>
+    <path d="M480 119l8 18 19 8-19 7-8 19-7-19-19-7 19-8 7-18Z" fill="#f7d0dc"/>
+    <path d="M461 393l10 25 26 11-26 10-10 25-10-25-25-10 25-11 10-25Z" fill="#fbfaf7"/>
     <path d="M55 300h20m-10-10v20M530 223h25m-12-12v25M191 63h18m-9-9v18" stroke-linecap="round"/>
   </g>
-  <g transform="translate(295 246) rotate(-11)" stroke="#19182a" stroke-width="4" stroke-linejoin="round">
-    <path d="M-159-122H144q24 0 25 23v213q0 21-22 21h-297q-22 0-22-22V-100q0-12 13-22Z" transform="translate(8 16)" fill="#19182a"/>
-    <rect x="-172" y="-122" width="341" height="256" rx="22" fill="#f9f6eb"/>
-    <path d="M-172-100q0-22 22-22h297q22 0 22 22v26h-341Z" fill="#d9f855"/>
+  <g transform="translate(295 246) rotate(-11)" stroke="#2d2a45" stroke-width="4" stroke-linejoin="round">
+    <path d="M-159-122H144q24 0 25 23v213q0 21-22 21h-297q-22 0-22-22V-100q0-12 13-22Z" transform="translate(8 16)" fill="#2d2a45"/>
+    <rect x="-172" y="-122" width="341" height="256" rx="22" fill="#fbfaf7"/>
+    <path d="M-172-100q0-22 22-22h297q22 0 22 22v26h-341Z" fill="#d5ec9f"/>
     <path d="M-172-74h341" />
-    <circle cx="-147" cy="-98" r="4" fill="#19182a"/><circle cx="-130" cy="-98" r="4" fill="#19182a"/><circle cx="-113" cy="-98" r="4" fill="#19182a"/>
+    <circle cx="-147" cy="-98" r="4" fill="#2d2a45"/><circle cx="-130" cy="-98" r="4" fill="#2d2a45"/><circle cx="-113" cy="-98" r="4" fill="#2d2a45"/>
     <path d="M76-98h64" stroke-linecap="round" stroke-dasharray="2 7"/>
-    <rect x="-145" y="-49" width="130" height="69" rx="10" fill="#ffadce"/>
-    <rect x="2" y="-49" width="139" height="69" rx="10" fill="#ffb65c"/>
-    <rect x="-145" y="33" width="130" height="70" rx="10" fill="#a79af8"/>
-    <rect x="2" y="33" width="139" height="70" rx="10" fill="#d9f855"/>
+    <rect x="-145" y="-49" width="130" height="69" rx="10" fill="#f7d0dc"/>
+    <rect x="2" y="-49" width="139" height="69" rx="10" fill="#fadbb3"/>
+    <rect x="-145" y="33" width="130" height="70" rx="10" fill="#c2b9f5"/>
+    <rect x="2" y="33" width="139" height="70" rx="10" fill="#d5ec9f"/>
     <rect x="-145" y="-49" width="130" height="69" rx="10" fill="url(#dots)" stroke="none"/>
     <rect x="2" y="33" width="139" height="70" rx="10" fill="url(#dots)" stroke="none"/>
-    <g fill="#19182a" stroke="none" font-family="monospace" font-weight="bold" font-size="26">
+    <g fill="#2d2a45" stroke="none" font-family="monospace" font-weight="bold" font-size="26">
       <text x="-128" y="-5">A</text><text x="20" y="-5">B</text><text x="-128" y="78">C</text><text x="20" y="78">D</text>
     </g>
     <path d="m86 65 11 11 20-24" stroke-linecap="round"/>
   </g>
-  <g transform="translate(405 136) rotate(13)" stroke="#19182a" stroke-width="4" stroke-linejoin="round">
-    <circle cx="0" cy="11" r="83" fill="#19182a"/>
-    <circle r="83" fill="#ffb65c"/>
+  <g transform="translate(405 136) rotate(13)" stroke="#2d2a45" stroke-width="4" stroke-linejoin="round">
+    <circle cx="0" cy="11" r="83" fill="#2d2a45"/>
+    <circle r="83" fill="#fadbb3"/>
     <circle r="74" fill="url(#lines)" stroke="none"/>
-    <circle r="65" fill="#ffb65c" stroke-dasharray="2 6" stroke-linecap="round"/>
-    <path d="M-34-31h68v15c0 25-10 39-28 45v15h19v10h-50V44h19V29c-18-6-28-20-28-45Z" fill="#f9f6eb"/>
+    <circle r="65" fill="#fadbb3" stroke-dasharray="2 6" stroke-linecap="round"/>
+    <path d="M-34-31h68v15c0 25-10 39-28 45v15h19v10h-50V44h19V29c-18-6-28-20-28-45Z" fill="#fbfaf7"/>
     <path d="M-34-22h-15c0 18 5 28 22 29m61-29h15c0 18-5 28-22 29" stroke-linecap="round"/>
-    <path d="m0-20 4 9 10 1-7 7 2 10L0 2l-9 5 2-10-7-7 10-1 4-9Z" fill="#d9f855" stroke-width="2"/>
+    <path d="m0-20 4 9 10 1-7 7 2 10L0 2l-9 5 2-10-7-7 10-1 4-9Z" fill="#d5ec9f" stroke-width="2"/>
   </g>
-  <g transform="translate(125 365) rotate(13)" stroke="#19182a" stroke-width="4" stroke-linejoin="round">
-    <path d="M-73-35h108q18 0 18 18v36q0 18-18 18H-2l-24 19V37h-47q-17 0-17-18v-36q0-18 17-18Z" transform="translate(4 8)" fill="#19182a"/>
-    <path d="M-73-35h108q18 0 18 18v36q0 18-18 18H-2l-24 19V37h-47q-17 0-17-18v-36q0-18 17-18Z" fill="#ffadce"/>
-    <text x="-18" y="13" fill="#19182a" stroke="none" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="32" letter-spacing="-1">QUIZ!</text>
+  <g transform="translate(125 365) rotate(13)" stroke="#2d2a45" stroke-width="4" stroke-linejoin="round">
+    <path d="M-73-35h108q18 0 18 18v36q0 18-18 18H-2l-24 19V37h-47q-17 0-17-18v-36q0-18 17-18Z" transform="translate(4 8)" fill="#2d2a45"/>
+    <path d="M-73-35h108q18 0 18 18v36q0 18-18 18H-2l-24 19V37h-47q-17 0-17-18v-36q0-18 17-18Z" fill="#f7d0dc"/>
+    <text x="-18" y="13" fill="#2d2a45" stroke="none" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="32" letter-spacing="-1">QUIZ!</text>
   </g>
-  <path d="m493 287-19 82 24-18 18 25 14-10-18-25 25-10-44-44Z" transform="translate(4 5)" fill="#19182a" stroke="#19182a" stroke-width="4" stroke-linejoin="round"/>
-  <path d="m493 287-19 82 24-18 18 25 14-10-18-25 25-10-44-44Z" fill="#f9f6eb" stroke="#19182a" stroke-width="4" stroke-linejoin="round"/>
+  <path d="m493 287-19 82 24-18 18 25 14-10-18-25 25-10-44-44Z" transform="translate(4 5)" fill="#2d2a45" stroke="#2d2a45" stroke-width="4" stroke-linejoin="round"/>
+  <path d="m493 287-19 82 24-18 18 25 14-10-18-25 25-10-44-44Z" fill="#fbfaf7" stroke="#2d2a45" stroke-width="4" stroke-linejoin="round"/>
 </svg>
