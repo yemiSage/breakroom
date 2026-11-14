@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node server/local.js",
     "demo": "node server/local.js --demo",
+    "simulate": "node server/local.js --demo --simulate",
     "deploy": "wrangler deploy --config wrangler.jsonc",
     "package:mac": "bash macos/package.sh"
   },

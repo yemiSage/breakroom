@@ -9,14 +9,22 @@ const defaultDirectory = process.platform === 'darwin'
   ? join(homedir(), 'Library', 'Application Support', 'Breakroom')
   : join(process.env.XDG_DATA_HOME || join(homedir(), '.local', 'share'), 'breakroom');
 
-try {
-  loadEnvFile(join(defaultDirectory, 'cloud.env'));
-} catch (error) {
-  if (error.code !== 'ENOENT') throw error;
+// Simulated games stay on this computer: skip the cloud connection and keep their records apart.
+const simulating = process.argv.includes('--simulate') || process.env.BREAKROOM_SIMULATE === '1';
+if (simulating) {
+  delete process.env.BREAKROOM_RESULTS_URL;
+  delete process.env.BREAKROOM_RESULTS_KEY;
+  delete process.env.BREAKROOM_ONLINE_URL;
+} else {
+  try {
+    loadEnvFile(join(defaultDirectory, 'cloud.env'));
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
 }
 
 export function openArchive(onSynced) {
-  const directory = process.env.BREAKROOM_DATA_DIR || defaultDirectory;
+  const directory = process.env.BREAKROOM_DATA_DIR || (simulating ? join(defaultDirectory, 'simulations') : defaultDirectory);
   const endpoint = process.env.BREAKROOM_RESULTS_URL && new URL(process.env.BREAKROOM_RESULTS_URL);
   const key = process.env.BREAKROOM_RESULTS_KEY;
   if (endpoint && (endpoint.username || endpoint.password ||

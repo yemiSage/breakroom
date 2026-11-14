@@ -35,6 +35,12 @@ Run `npm ci` before deploying the Worker. Local hosting from source still uses t
 
 Run `npm run demo` and open [Breakroom on this computer](http://127.0.0.1:8080). Select **Local** and **Host a game**. Set your questions or choose **Use starter quiz** for three ready-made questions. Demo rounds last eight seconds. Open the invite in a second tab or on a phone on the same Wi-Fi, then advance after each reveal. Select **Show final results** to save the game and see its record.
 
+## Simulate a full game on one computer
+
+Run `npm run simulate` and open the printed address on this computer. Select **Host a game**, then **Use sample quiz**. In the lobby, select **Add 5 test players**. Five bots join and answer each round after a random delay, correctly about two times in three. Run the game as host. To also see a player's screen, open the invite link in another tab and join before you start.
+
+Simulation never contacts Breakroom Online. It ignores `cloud.env`, turns off results uploads and AI rephrasing, and saves finished games in a `simulations` folder inside the usual records folder.
+
 ## Host a Local game
 
 **On macOS** extract the Breakroom archive for your Mac’s processor and open **Breakroom.app**. The app opens the host screen in your default browser. Keep the launcher open until the game ends. The archive bundles the runtime and all game assets, so it can start without an internet connection. The launcher is ad hoc signed.

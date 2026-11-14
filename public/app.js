@@ -288,7 +288,8 @@ function lobby(host) {
         '<h2>' + state.playerCount + ' / ' + state.capacity + ' joined</h2>' + roster +
         '<div class="lobby-actions">' + button(playIcon + 'Start game', 'start',
           { primary: true, disabled: disabled || !state.playerCount }) +
-        button(state.locked ? 'Resume joins' : 'Pause joins', 'lock', { disabled }) + '</div>',
+        button(state.locked ? 'Resume joins' : 'Pause joins', 'lock', { disabled }) +
+        (config.simulate ? button('Add 5 test players', 'simulate', { disabled }) : '') + '</div>',
       side: invite()
     };
   }
@@ -596,7 +597,8 @@ app.addEventListener('click', async event => {
     for (const answer of app.querySelectorAll('button[data-action=answer], button[data-action=toggle]')) answer.disabled = true;
   }
   try {
-    const result = await api(session.path + '/' + (answering ? 'answer' : action), { role: session.role, data });
+    const result = await api(session.path + '/' + (answering ? 'answer' : action),
+      { role: session.role, data: action === 'simulate' ? {} : data });
     apply(result.state);
   } catch (error) {
     notice = error.message || 'Could not reach the server. Try again.';
