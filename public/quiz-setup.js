@@ -117,7 +117,7 @@ export function openQuizSetup(app, createRoom, back, paraphraseQuestion, topics 
     all.forEach((card, index) => {
       const label = 'Question ' + (index + 1);
       card.querySelector('legend').textContent = label;
-      card.querySelector('[data-question-label]').textContent = label;
+      card.querySelector('[data-question-label]').innerHTML = '<span class="sr-only">Question </span>' + (index + 1);
       card.querySelector('[data-remove]').disabled = all.length === 1;
     });
   }
