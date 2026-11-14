@@ -6,8 +6,9 @@ import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { GameError, newRoom, reveal, snapshot } from './game.js';
 import { openArchive } from './archive.js';
-import { createPayloadLimit, prepareDeck } from './deck.js';
+import { createPayloadLimit, prepareDeck, readDuration } from './deck.js';
 import { readParaphrase } from './paraphrase.js';
+import { topicList, topicQuestions } from './topics.js';
 import { connectionsPerMember, joinLimiter, rateWindow, roomCookie, roomSession } from './room-security.js';
 import { actionToken, bearer, checkOrigin, errorResponse, handleAction, json, makeCode, makeToken,
   imageRoute, nextWake, pageRoute, questionImage, readInput, roomResponse, roomRoute, stateMessage } from './protocol.js';
@@ -118,7 +119,11 @@ async function handleRequest(req, res) {
     if (req.method === 'GET' && pathname === '/api/config') {
       return await respond(res, json({ mode: 'local', inviteOrigin, lanAvailable: Boolean(lanHost),
         localOrigin: hostOrigin, onlineOrigin, canHost: isHostLaptop || Boolean(hostKey),
-        needsHostKey: !isHostLaptop && Boolean(hostKey), demo, aiAvailable: Boolean(onlineOrigin) }));
+        needsHostKey: !isHostLaptop && Boolean(hostKey), demo, aiAvailable: Boolean(onlineOrigin), topics: topicList }));
+    }
+    const topicRoute = pathname.match(/^\/api\/topics\/([a-z]{1,20})$/);
+    if (req.method === 'GET' && topicRoute) {
+      return await respond(res, json({ questions: topicQuestions(topicRoute[1]) }));
     }
     if (req.method === 'POST' && pathname === '/api/paraphrase') {
       const request = new Request(url, { method: 'POST', headers: req.headers, body: Readable.toWeb(req), duplex: 'half' });
@@ -151,12 +156,13 @@ async function handleRequest(req, res) {
       if (!allowCreate(req.socket.remoteAddress)) throw new GameError(429, 'Too many rooms. Try again in a minute.');
       if (input.mode !== 'local') throw new GameError(400, 'Choose Local on this server.');
       const deck = prepareDeck(input.questions, input, demo ? 3 : undefined);
+      const duration = readDuration(input);
       if (rooms.size >= roomLimit) throw new GameError(503, 'This server has too many active rooms.');
       let code = makeCode();
       while (rooms.has(code) || archive.has(code)) code = makeCode();
       const token = makeToken();
       const room = newRoom(code, 'local', token, Date.now(), {
-        deck, ...(demo && { questionCount: 3, duration: 8000 })
+        deck, duration, ...(demo && { questionCount: 3, duration: 8000 })
       });
       const entry = { room, streams: new Map(), admit: joinLimiter(), timer: null };
       rooms.set(code, entry);

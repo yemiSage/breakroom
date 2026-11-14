@@ -4,9 +4,11 @@ The public website is available at [breakroom-quiz.breakroom-quiz.workers.dev](h
 
 This Mac’s Local server reads its cloud connection from `~/Library/Application Support/Breakroom/cloud.env` when it starts. The file contains the deployed URL and a private upload key. Reopen the current Mac package or restart the source server to use these settings.
 
-Breakroom runs an eight-question live office quiz. Players use their phone browsers. Each round lasts 20 seconds and awards 100 points per correct answer. The host starts the first round and advances after each automatic reveal.
+Breakroom runs an eight-question live office quiz. Players use their phone browsers. Each round lasts 20 seconds by default, and the host can choose 10 to 60 seconds in Game settings. A correct answer earns 100 points. The host starts the first round and advances after each automatic reveal.
 
 Players see correct answers when the countdown ends. Their final results start with a three-second countdown, followed by third, second, and first place, then the remaining standings. The player list omits up to five people at the bottom while always keeping the top three. The host can view the full leaderboard throughout the game and use its eye button to hide or show that list privately.
+
+**Use sample quiz** fills in ten ready-made questions on a topic the host picks: general knowledge, maths, economics, English, animals, science, geography, history, sports or technology. The host can edit them before opening the lobby.
 
 Each question can label its answers with letters, shapes or emojis. In Game settings, the host can enable randomized answer options and question order. A room keeps its randomized order through refreshes and reconnects, and scoring follows the shuffled correct answers.
 
@@ -33,7 +35,7 @@ Run `npm ci` before deploying the Worker. Local hosting from source still uses t
 
 ## Try the browser prototype
 
-Run `npm run demo` and open [Breakroom on this computer](http://127.0.0.1:8080). Select **Local** and **Host a game**. Set your questions or choose **Use starter quiz** for three ready-made questions. Demo rounds last eight seconds. Open the invite in a second tab or on a phone on the same Wi-Fi, then advance after each reveal. Select **Show final results** to save the game and see its record.
+Run `npm run demo` and open [Breakroom on this computer](http://127.0.0.1:8080). Select **Local** and **Host a game**. Set your questions or choose **Use sample quiz** and pick a topic. Demo games play the first three questions. Demo rounds last eight seconds. Open the invite in a second tab or on a phone on the same Wi-Fi, then advance after each reveal. Select **Show final results** to save the game and see its record.
 
 ## Host a Local game
 

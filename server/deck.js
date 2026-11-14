@@ -1,5 +1,5 @@
 import { GameError } from './game.js';
-import { questions } from './questions.js';
+import { topicQuestions } from './topics.js';
 
 export const deckLimit = 12;
 export const createPayloadLimit = 800 * 1024;
@@ -44,12 +44,27 @@ export function readDeck(input) {
       fail('Mark the correct answer or answers.');
     }
 
+    // Sample questions keep their topic and fact; the setup screen drops the fact once a question is edited.
+    const category = question.category === undefined ? 'Custom' : typeof question.category === 'string' ? question.category.trim() : '';
+    if (!category || category.length > 32 || /[\p{Cc}\p{Cf}]/u.test(category)) fail('Use a shorter category.');
+    const fact = question.fact === undefined ? undefined : typeof question.fact === 'string' ? question.fact.trim() : '';
+    if (fact !== undefined && (!fact || fact.length > 240)) fail('Use a shorter answer fact.');
+
     return {
-      category: 'Custom', text: text || 'Look at the image and choose your answer.', options, selection, optionStyle,
+      category, ...(fact && { fact }), text: text || 'Look at the image and choose your answer.', options, selection, optionStyle,
       correct: selection === 'single' ? correct : correct.slice().sort((a, b) => a - b),
       ...(format === 'image' && { image })
     };
   });
+}
+
+export const answerTimes = [10, 15, 20, 30, 45, 60];
+
+// How long players get to answer each question, in milliseconds.
+export function readDuration(settings) {
+  const seconds = settings.answerSeconds ?? 20;
+  if (!answerTimes.includes(seconds)) throw new GameError(400, 'Choose an answer time from the list.');
+  return seconds * 1000;
 }
 
 function shuffled(values) {
@@ -61,14 +76,12 @@ function shuffled(values) {
   return result;
 }
 
-export function prepareDeck(input, settings, starterCount = questions.length) {
-  let deck = readDeck(input);
+export function prepareDeck(input, settings, starterCount) {
   const { randomizeOptions = false, randomizeQuestions = false } = settings;
   if (typeof randomizeOptions !== 'boolean' || typeof randomizeQuestions !== 'boolean') {
     throw new GameError(400, 'Choose whether to shuffle questions and answers.');
   }
-  if (!randomizeOptions && !randomizeQuestions) return deck;
-  deck ??= questions.slice(0, starterCount);
+  let deck = readDeck(input) ?? topicQuestions('general').slice(0, starterCount);
   if (randomizeOptions) {
     deck = deck.map(question => {
       const order = shuffled(question.options.map((_, index) => index));

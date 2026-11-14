@@ -1,8 +1,9 @@
 import { DurableObject } from 'cloudflare:workers';
-import { createPayloadLimit, prepareDeck, recordPayloadLimit } from './deck.js';
+import { createPayloadLimit, prepareDeck, readDuration, recordPayloadLimit } from './deck.js';
 import { GameError, capacity, identify, newRoom, reveal, snapshot } from './game.js';
 import { paraphrase, readParaphrase } from './paraphrase.js';
 import { authAvailability } from './auth.js';
+import { topicList, topicQuestions } from './topics.js';
 import { connectionsPerMember, joinLimiter, roomCookie, roomSession } from './room-security.js';
 import { actionToken, bearer, checkOrigin, errorResponse, handleAction, imageRoute, json, makeCode, makeToken,
   nextWake, pageRoute, questionImage, readInput, resultRoute, roomResponse, roomRoute, stateMessage } from './protocol.js';
@@ -12,6 +13,14 @@ export { AccountStore } from './account-store.js';
 const requestSource = request => request.headers.get('CF-Connecting-IP') || 'local-preview';
 const day = 86_400_000;
 const dailyRoomBudget = 1000;
+// One address can open this many rooms a day, so a single client cannot use up the shared budget.
+const sourceRoomBudget = 20;
+
+// Rate limit keys use a one-way hash so addresses are not stored.
+async function sourceKey(request) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('breakroom-source:' + requestSource(request)));
+  return Array.from(new Uint8Array(digest).slice(0, 16), byte => byte.toString(16).padStart(2, '0')).join('');
+}
 
 async function limit(binding, key, message) {
   if (!binding) throw new GameError(503, 'Online room protection is unavailable.');
@@ -77,9 +86,11 @@ export default {
         if (!['GET', 'PUT', 'DELETE'].includes(request.method)) throw new GameError(405, 'Method not allowed.');
         return await env.ROOMS.getByName('result:' + result[1]).fetch(request);
       }
+      const topic = path.match(/^\/api\/topics\/([a-z]{1,20})$/);
+      if (topic && request.method === 'GET') return json({ questions: topicQuestions(topic[1]) });
       if (path === '/api/config' && request.method === 'GET') {
         return json({ mode: 'online', canHost: true, inviteOrigin: url.origin,
-          onlineOrigin: url.origin, localOrigin: 'http://127.0.0.1:8080', aiAvailable: Boolean(env.AI), auth: authAvailability(env) });
+          onlineOrigin: url.origin, localOrigin: 'http://127.0.0.1:8080', aiAvailable: Boolean(env.AI), auth: authAvailability(env), topics: topicList });
       }
       if (path === '/api/rooms' && request.method === 'POST') {
         checkOrigin(request);
@@ -89,11 +100,12 @@ export default {
         const input = await readInput(request, createPayloadLimit);
         if (input.mode !== 'online') throw new GameError(400, 'Choose Online on this server.');
         const deck = prepareDeck(input.questions, input);
+        const duration = readDuration(input);
         const budget = await env.ROOMS.getByName('online-room-budget').fetch(new Request(
-          url.origin + '/internal/room-budget', { method: 'POST' }
+          url.origin + '/internal/room-budget', { method: 'POST', headers: { 'X-Breakroom-Source': await sourceKey(request) } }
         ));
         if (!budget.ok) return budget;
-        const body = JSON.stringify({ deck });
+        const body = JSON.stringify({ deck, duration });
         for (let i = 0; i < 3; i++) {
           const code = makeCode();
           const response = await env.ROOMS.getByName(code).fetch(new Request(url.origin + '/internal/create/' + code, {
@@ -139,6 +151,15 @@ export class QuizRoom extends DurableObject {
     });
   }
 
+  // Drop per-address counts from earlier days.
+  async pruneSources(today) {
+    for (;;) {
+      const stale = [...(await this.ctx.storage.list({ prefix: 'source:', end: 'source:' + today, limit: 128 })).keys()];
+      if (!stale.length) return;
+      await this.ctx.storage.delete(stale);
+    }
+  }
+
   publish(room, audience) {
     for (const ws of this.ctx.getWebSockets(audience === 'host' ? 'host' : undefined)) {
       try {
@@ -159,16 +180,31 @@ export class QuizRoom extends DurableObject {
     try {
       const path = new URL(request.url).pathname;
       if (path === '/internal/room-budget' && request.method === 'POST') {
-        const allowed = await this.ctx.storage.transaction(async txn => {
-          const today = Math.floor(Date.now() / day);
+        const source = request.headers.get('X-Breakroom-Source');
+        if (!/^[a-f0-9]{32}$/.test(source || '')) throw new GameError(400, 'Missing room source.');
+        const today = Math.floor(Date.now() / day);
+        const outcome = await this.ctx.storage.transaction(async txn => {
           const budget = await txn.get('creation-budget');
-          const count = budget?.today === today ? budget.count : 0;
-          if (count >= dailyRoomBudget) return false;
+          const newDay = budget?.today !== today;
+          const count = newDay ? 0 : budget.count;
+          if (count >= dailyRoomBudget) return 'global';
+          const key = 'source:' + today + ':' + source;
+          const used = (await txn.get(key)) ?? 0;
+          if (used >= sourceRoomBudget) return 'source';
           await txn.put('creation-budget', { today, count: count + 1 });
-          return true;
+          await txn.put(key, used + 1);
+          return newDay ? 'new-day' : 'ok';
         });
-        return allowed ? new Response(null, { status: 204 }) :
-          json({ error: 'Online hosting reached its daily room limit. Try again after midnight UTC.' }, 429);
+        if (outcome === 'new-day') await this.pruneSources(today);
+        if (outcome === 'global') {
+          console.warn('Room limit reached: daily budget for all hosts');
+          return json({ error: 'Online hosting reached its daily room limit. Try again after midnight UTC.' }, 429);
+        }
+        if (outcome === 'source') {
+          console.warn('Room limit reached: one address hit its daily cap');
+          return json({ error: 'This network opened ' + sourceRoomBudget + ' rooms today. Try again after midnight UTC.' }, 429);
+        }
+        return new Response(null, { status: 204 });
       }
       const result = path.match(resultRoute);
       if (result) {
@@ -194,11 +230,11 @@ export class QuizRoom extends DurableObject {
       }
       const create = path.match(/^\/internal\/create\/([A-HJ-NP-Z2-9]{8})$/);
       if (create && request.method === 'POST') {
-        const { deck } = await readInput(request, createPayloadLimit);
+        const { deck, duration } = await readInput(request, createPayloadLimit);
         return await this.ctx.blockConcurrencyWhile(async () => {
           if (await this.ctx.storage.get('room')) return json({ error: 'Room code in use.' }, 409);
           const token = makeToken();
-          const room = newRoom(create[1], 'online', token, Date.now(), { deck });
+          const room = newRoom(create[1], 'online', token, Date.now(), { deck, duration });
           await this.save(room);
           const response = json({ state: snapshot(room, { role: 'host' }, Date.now()) }, 201);
           return roomSession(response, request, room.code, 'host', token);

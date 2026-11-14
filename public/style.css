@@ -282,7 +282,7 @@ section.quiz-setup > h1 { font-size: 2.5rem; }
 .setup-content { padding: 16px; margin: 0; }
 .setup-card .field-label { max-width: none; margin: 0; }
 .setup-card .field-label[hidden] { display: none; }
-.setup-card select {
+.setup-card select, .game-settings select {
   appearance: none;
   font: 600 1rem/1.2 Arial, sans-serif;
   color: var(--ink);
@@ -306,15 +306,19 @@ section.quiz-setup > h1 { font-size: 2.5rem; }
   pointer-events: none;
 }
 @media (forced-colors: active) {
-  .setup-card select { appearance: auto; padding-right: 10px; }
+  .setup-card select, .game-settings select { appearance: auto; padding-right: 10px; }
   .setup-select::after { display: none; }
 }
 .setup-types, .setup-answer { display: grid; align-items: end; gap: 10px; margin-bottom: 12px; }
 .setup-types { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 18px; padding-top: 16px; border-top: 1px solid #b9b0e0; }
 .setup-types select { width: 100%; min-width: 0; }
 .setup-add { display: flex; justify-content: flex-end; }
-.quiz-order { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 22px 0 0; }
-.quiz-order legend { width: 100%; }
+.game-settings { margin: 22px 0 0; padding: 0; border: var(--line); border-radius: 10px; background: #f0ebff; box-shadow: 4px 4px 0 var(--ink); overflow: clip; }
+.game-settings-title { float: left; width: 100%; padding: 15px clamp(12px, 3vw, 24px); border-bottom: var(--line); background: var(--periwinkle); }
+.game-settings-body { clear: both; display: flex; flex-wrap: wrap; align-items: end; gap: 16px 28px; padding: 16px clamp(12px, 3vw, 24px) 18px; }
+.game-settings .field-label { width: 190px; max-width: 100%; margin: 0; }
+.game-settings select { width: 100%; }
+.quiz-order { display: flex; flex-wrap: wrap; gap: 10px 22px; min-height: 40px; align-items: center; }
 .quiz-order label { display: flex; align-items: center; gap: 8px; line-height: 1.35; cursor: pointer; }
 .quiz-order input { width: 18px; height: 18px; margin: 0; accent-color: #5d46b3; }
 .setup-prompt { display: grid; gap: 4px; }
@@ -334,6 +338,22 @@ section.quiz-setup > h1 { font-size: 2.5rem; }
 .setup-actions .primary { flex: 1 1 auto; }
 .setup-remove { border: 0; padding: 7px 0; background: transparent; text-decoration: underline; cursor: pointer; }
 .setup-remove:disabled { display: none; }
+.topic-dialog { width: min(calc(100% - 32px), 560px); max-height: calc(100dvh - 32px); padding: 0; border: var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); box-shadow: 0 6px 0 var(--ink); }
+.topic-dialog::backdrop { background: rgb(25 24 42 / .45); }
+.topic-dialog form { padding: 24px; }
+.topic-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.topic-heading h2 { margin: 0; font-size: 1.8rem; letter-spacing: -.05em; }
+.topic-dialog p { margin: 8px 0 18px; line-height: 1.4; }
+.topic-close { display: inline-grid; place-items: center; width: 36px; height: 36px; flex: none; padding: 0; border: var(--line); border-radius: 50%; background: var(--paper); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.topic-close:hover { background: var(--pink); }
+.topic-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.topic-option { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 14px; border: var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: inherit; font-weight: 800; text-align: left; cursor: pointer; transition: background-color .16s, transform .16s, box-shadow .16s; }
+.topic-option:hover, .topic-option:focus-visible { background: var(--lime); transform: translateY(-2px); box-shadow: 0 3px var(--ink); }
+.topic-icon { font-size: 1.4rem; }
+@media (max-width: 480px) {
+  .topic-grid { grid-template-columns: 1fr; }
+  .topic-dialog form { padding: 18px; }
+}
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .question-image { display: block; max-width: 100%; max-height: 340px; object-fit: contain; border-radius: 8px; margin: 0 0 17px; }
 @media (max-width: 650px) {
@@ -342,6 +362,7 @@ section.quiz-setup > h1 { font-size: 2.5rem; }
 }
 @media (max-width: 420px) {
   .setup-actions .primary { flex-basis: 100%; }
+  .game-settings .field-label { width: 100%; }
   .setup-types { grid-template-columns: minmax(0, 1fr); }
 }
 

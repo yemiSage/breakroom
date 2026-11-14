@@ -186,7 +186,7 @@ function renderLanding() {
       create.focus();
     }, config.aiAvailable ? async input => api('/api/paraphrase', {
       data: { ...input, hostKey: key }, signal: AbortSignal.timeout(30000)
-    }) : undefined);
+    }) : undefined, config.topics);
   });
 }
 
